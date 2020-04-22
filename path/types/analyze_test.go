@@ -21,20 +21,6 @@ func (m *testModel) Lookup(name string) (Path, error) {
 	}, nil
 }
 
-func alt(from, to string) Alternative {
-	return Alternative{
-		Type{Kind: Entity, Name: from},
-		Type{Kind: Entity, Name: to},
-	}
-}
-
-func ent(typ string) Alternative {
-	return Alternative{
-		absoluteType,
-		Type{Kind: Entity, Name: typ},
-	}
-}
-
 func TestAnalysis(t *testing.T) {
 	for _, test := range []struct {
 		name     string

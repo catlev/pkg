@@ -10,6 +10,8 @@ import (
 	"unsafe"
 )
 
+// Must asserts that a call to Parse or ParseString failing is a programming
+// error and so panics in that situation.
 func Must(t Tree, err error) Tree {
 	if err != nil {
 		panic(err)
@@ -17,10 +19,12 @@ func Must(t Tree, err error) Tree {
 	return t
 }
 
+// ParseString parses a string into a Tree.
 func ParseString(s string) (Tree, error) {
 	return Parse(strings.NewReader(s))
 }
 
+// Parse parses a Reader into a Tree.
 func Parse(r io.Reader) (Tree, error) {
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -83,7 +87,7 @@ func (p *parser) prefix() Tree {
 	case '(':
 		path := p.parse(0)
 		if p.next() != ')' {
-			p.setErr(fmt.Errorf("%w: expecting ')'", ErrFailedToMatch))
+			p.setErr(fmt.Errorf("expecting ')'"))
 		}
 		return path
 	}

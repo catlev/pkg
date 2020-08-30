@@ -6,6 +6,12 @@ import (
 
 // Tree is an implementation of a B-tree over unsigned 64-bit integers. This should form the basis of a disk-based
 // database implementation.
+//
+// Zeros
+//
+// Due to some details of the representation, it is not currently possible to
+// store a value of zero in the tree. Attempts to do so will cause an error to
+// be returned from Put.
 type Tree struct {
 	store BlockStore
 	depth int
@@ -14,6 +20,10 @@ type Tree struct {
 
 // ErrNotFound signals that the key does not exist in the tree in question.
 var ErrNotFound = errors.New("not found")
+
+// ErrStoringZero indicates that an attempt was made to store zero as a value in
+// the tree.
+var ErrStoringZero = errors.New("cannot store zero value")
 
 // New creates a new tree using the given block store, depth and starting location. The starting location may not be
 // zero.
@@ -32,6 +42,9 @@ func (t *Tree) Get(key uint64) (uint64, error) {
 
 // Put associates the provided key and value.
 func (t *Tree) Put(key, value uint64) error {
+	if value == 0 {
+		return ErrStoringZero
+	}
 	n, err := t.lookupNode(key)
 	if err != nil {
 		return err

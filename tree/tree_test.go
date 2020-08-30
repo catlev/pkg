@@ -9,7 +9,7 @@ func TestTreeOperations(t *testing.T) {
 	rand.Seed(0)
 	tree := New(NewBlankMemoryStore(), 0, blockSize)
 
-	for i := 0; i < 4096; i++ {
+	for i := 1; i < 4096; i++ {
 		err := tree.Put(rand.Uint64(), uint64(i))
 
 		if err != nil {
@@ -42,11 +42,11 @@ func TestRange(t *testing.T) {
 		}
 	}
 
-	for _, test := range []struct{
-		name string
+	for _, test := range []struct {
+		name     string
 		from, to uint64
 		min, max uint64
-	} {
+	}{
 		{
 			"EntirelyWithin",
 			100, 200,
@@ -68,6 +68,7 @@ func TestRange(t *testing.T) {
 			expect := test.min
 			for r.Next() {
 				if r.This() != expect {
+					t.Log(tree.lookupNode(113))
 					t.Fatalf("got %v, expecting %v", r.This(), expect)
 				}
 				expect++

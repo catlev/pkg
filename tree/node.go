@@ -31,41 +31,6 @@ type nodePut struct {
 	err    error
 }
 
-func (n *node) asBytes() []byte {
-	sh := reflect.SliceHeader{
-		Data: uintptr(unsafe.Pointer(&n.entries)),
-		Len:  512,
-		Cap:  512,
-	}
-	return *(*[]byte)(unsafe.Pointer(&sh))
-}
-
-func (n *node) bucket(k uint64) int {
-	return sort.Search(n.len(), func(idx int) bool {
-		return idx != 0 && n.entries[idx].from > k
-	})
-}
-
-func (n *node) len() int {
-	return sort.Search(nodeSize, func(idx int) bool {
-		return idx != 0 && n.entries[idx].from == 0
-	})
-}
-
-func (n *node) entryRange(bucket int) (min, max uint64) {
-	if bucket == 1 {
-		min = n.min
-	} else {
-		min = n.entries[bucket-1].from
-	}
-	if bucket == n.len() {
-		max = n.max
-	} else {
-		max = n.entries[bucket].from
-	}
-	return min, max
-}
-
 func (t *Tree) rootNode() (*node, error) {
 	n, err := t.readNode(t.start)
 	if err != nil {
@@ -80,9 +45,44 @@ func (t *Tree) rootNode() (*node, error) {
 	return n, nil
 }
 
+func (n *node) asBytes() []byte {
+	sh := reflect.SliceHeader{
+		Data: uintptr(unsafe.Pointer(&n.entries)),
+		Len:  512,
+		Cap:  512,
+	}
+	return *(*[]byte)(unsafe.Pointer(&sh))
+}
+
+func (n *node) bucket(k uint64) int {
+	return sort.Search(n.len(), func(idx int) bool {
+		return idx != 0 && n.entries[idx].from > k
+	}) - 1
+}
+
+func (n *node) len() int {
+	return sort.Search(nodeSize, func(idx int) bool {
+		return idx != 0 && n.entries[idx].from == 0
+	})
+}
+
+func (n *node) entryRange(bucket int) (min, max uint64) {
+	if bucket == 0 {
+		min = n.min
+	} else {
+		min = n.entries[bucket].from
+	}
+	if bucket >= n.len()-1 {
+		max = n.max
+	} else {
+		max = n.entries[bucket+1].from
+	}
+	return min, max
+}
+
 func (n *node) followBranch(k uint64) (*node, error) {
 	b := n.bucket(k)
-	entry := n.entries[b-1]
+	entry := n.entries[b]
 
 	next, err := n.tree.readNode(entry.value)
 	if err != nil {
@@ -99,11 +99,13 @@ func (n *node) followBranch(k uint64) (*node, error) {
 
 func (n *node) followLeaf(k uint64) (uint64, error) {
 	b := n.bucket(k)
-	e := n.entries[b-1]
-	if b == 0 && n.min != k {
+	e := n.entries[b]
+
+	min, _ := n.entryRange(b)
+	if k != min {
 		return 0, ErrNotFound
 	}
-	if b > 0 && e.from != k {
+	if e.value == 0 {
 		return 0, ErrNotFound
 	}
 	return e.value, nil
@@ -158,16 +160,16 @@ func (p *nodePut) insert() {
 		}
 	}
 
+	p.bucket++
 	prev := p.node.insert(p.bucket)
 	prev.from = p.key
-	p.bucket++
 }
 
 func (p *nodePut) saveValue(value uint64) {
 	if p.err != nil {
 		return
 	}
-	p.node.entries[p.bucket-1].value = value
+	p.node.entries[p.bucket].value = value
 	p.err = p.node.tree.writeNode(p.node)
 }
 

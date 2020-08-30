@@ -17,20 +17,17 @@ func (t *Tree) GetRange(from, to uint64) *Range {
 		return &Range{err: err}
 	}
 	b := n.bucket(from)
-	if b == 1 {
-		b = 2
-	}
-	return &Range{to: to, node: n, bucket: b - 2}
+	return &Range{to: to, node: n, bucket: b - 1}
 }
 
 // Next will attempt to move to the next entry, returning whether this was possible. Once a call to Next has returned
 // false, it will continue to do so in perpetuity.
 func (r *Range) Next() bool {
-	if r.node == nil  {
+	if r.node == nil {
 		return false
 	}
 	r.bucket++
-	if r.bucket == r.node.len() {
+	if r.bucket >= r.node.len() {
 		// the current leaf node has been exhausted
 		r.node, r.err = r.nextNode(r.node)
 		if r.node == nil {
@@ -38,9 +35,13 @@ func (r *Range) Next() bool {
 		}
 		r.bucket = 0
 	}
-	if r.bucket != 0 && r.node.entries[r.bucket].from >= r.to {
+	min, _ := r.node.entryRange(r.bucket)
+	if min >= r.to {
 		r.node = nil
 		return false
+	}
+	if r.This() == 0 {
+		return r.Next()
 	}
 	return true
 }

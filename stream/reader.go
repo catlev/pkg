@@ -34,12 +34,11 @@ func NewReader(src io.Reader) *Reader {
 	return &Reader{src: *new(scanner.Scanner).Init(src)}
 }
 
-// Next moves to the next named section (field or record) of the input. It
-// returns whether progress can be made by a consumer.
+// Next moves to the next named section (field or record) of the input. It returns whether progress
+// can be made by a consumer.
 //
-// If Next is called twice, without a call to either a Field() method or the
-// Record() method in between, then an error is signalled and the second Next()
-// returns false.
+// If Next is called twice without a call to either a Field() method or the Record() method in
+// between then an error is signalled and the second Next() returns false.
 func (p *Reader) Next() bool {
 	if p == nil {
 		return false
@@ -75,15 +74,15 @@ func (p *Reader) Next() bool {
 	return true
 }
 
-// Name gives the name of the current section under consideration. Note that if
-// Kind() does not return Field or Value, then this value is undefined.
+// Name gives the name of the current section under consideration. Note that if Kind() does not
+// return Field or Value then this value is undefined.
 func (p *Reader) Name() string {
 	return p.name
 }
 
-// Kind gives the kind of the section under consideration, either Field or
-// Record. If it returns anything other than one of these values, the reader is
-// in a bad state and it would be unwise to continue parsing.
+// Kind gives the kind of the section under consideration, either Field or Record. If it returns
+// anything other than one of these values, the reader is in a bad state and it would be unwise to
+// continue parsing.
 func (p *Reader) Kind() Kind {
 	return p.kind
 }
@@ -93,8 +92,8 @@ func (p *Reader) Err() error {
 	return p.err
 }
 
-// Record uses the provided parser to parse a record. An error will be signalled
-// if the current section is not a record.
+// Record uses the provided parser to parse a record. An error will be signalled if the current
+// section is not a record.
 func (p *Reader) Record() *Reader {
 	if p.kind != Record {
 		p.setErr(errors.New("expecting record"))

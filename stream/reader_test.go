@@ -117,8 +117,7 @@ func TestCodegen(t *testing.T) {
 			case "leader_emp_no":
 				t.leaderEmpNo = r.IntField()
 			case "member":
-				m := createMember(t)
-				parseMember(m, r.Record())
+				parseMember(createMember(t), r.Record())
 			}
 		}
 	}

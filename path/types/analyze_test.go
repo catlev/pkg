@@ -1,9 +1,10 @@
 package types
 
 import (
-	"github.com/catlev/pkg/path/syntax"
 	"reflect"
 	"testing"
+
+	"github.com/catlev/pkg/path/syntax"
 )
 
 type testModel struct {
@@ -31,13 +32,13 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Value",
 			nil,
-			"\"a\"",
-			[]Alternative{Alternative{absoluteType, attributeType}},
+			`"a"`,
+			[]Alternative{{absoluteType, attributeType}},
 		},
 		{
 			"Term",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "b")},
+				"f": {alt("a", "b")},
 			},
 			"f",
 			[]Alternative{alt("a", "b")},
@@ -45,7 +46,7 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Inverse",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "b")},
+				"f": {alt("a", "b")},
 			},
 			"~f",
 			[]Alternative{alt("b", "a")},
@@ -53,8 +54,8 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Join",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "b")},
-				"g": []Alternative{alt("b", "c")},
+				"f": {alt("a", "b")},
+				"g": {alt("b", "c")},
 			},
 			"f/g",
 			[]Alternative{alt("a", "c")},
@@ -62,8 +63,8 @@ func TestAnalysis(t *testing.T) {
 		{
 			"JoinTwoPaths",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "b"), alt("a", "c")},
-				"g": []Alternative{alt("b", "d"), alt("c", "d")},
+				"f": {alt("a", "b"), alt("a", "c")},
+				"g": {alt("b", "d"), alt("c", "d")},
 			},
 			"f/g",
 			[]Alternative{alt("a", "d")},
@@ -71,8 +72,8 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Union",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "b")},
-				"g": []Alternative{alt("a", "c")},
+				"f": {alt("a", "b")},
+				"g": {alt("a", "c")},
 			},
 			"f|g",
 			[]Alternative{alt("a", "b"), alt("a", "c")},
@@ -80,8 +81,8 @@ func TestAnalysis(t *testing.T) {
 		{
 			"UnionDup",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "b")},
-				"g": []Alternative{alt("a", "c")},
+				"f": {alt("a", "b")},
+				"g": {alt("a", "c")},
 			},
 			"f|g|f",
 			[]Alternative{alt("a", "b"), alt("a", "c")},
@@ -89,8 +90,8 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Intersection",
 			map[string][]Alternative{
-				"f": []Alternative{alt("a", "c"), alt("a", "b")},
-				"g": []Alternative{alt("a", "c")},
+				"f": {alt("a", "c"), alt("a", "b")},
+				"g": {alt("a", "c")},
 			},
 			"f&g",
 			[]Alternative{alt("a", "c")},
@@ -98,10 +99,10 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Combination",
 			map[string][]Alternative{
-				"id":   []Alternative{alt("a", "int"), alt("b", "int")},
-				"b_id": []Alternative{alt("a", "int")},
-				"a":    []Alternative{ent("a")},
-				"b":    []Alternative{ent("b")},
+				"id":   {alt("a", "int"), alt("b", "int")},
+				"b_id": {alt("a", "int")},
+				"a":    {ent("a")},
+				"b":    {ent("b")},
 			},
 			"(~a/b)&(b_id/~id)",
 			[]Alternative{alt("a", "b")},
@@ -123,7 +124,7 @@ func TestAnalysis(t *testing.T) {
 func TestError(t *testing.T) {
 	m := &testModel{
 		map[string][]Alternative{
-			"id": []Alternative{alt("a", "int")},
+			"id": {alt("a", "int")},
 		},
 	}
 	for _, test := range []struct {

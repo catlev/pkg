@@ -6,6 +6,7 @@ import (
 	"github.com/catlev/pkg/store/block"
 )
 
+// Put establishes an association between key and value. Errors may be relayed from the block store.
 func (t *Tree) Put(key, id block.Word) error {
 	n, err := t.findNode(key)
 	if err != nil {

@@ -82,7 +82,6 @@ func TestDeleteMergePre(t *testing.T) {
 	tree.Delete(35)
 
 	if _, err := tree.Get(35); !errors.Is(err, ErrNotFound) {
-		t.Log(store)
 		t.Fail()
 	}
 }
@@ -108,7 +107,6 @@ func TestDeleteMergeSucc(t *testing.T) {
 	tree.Delete(10)
 
 	if _, err := tree.Get(10); !errors.Is(err, ErrNotFound) {
-		t.Log(store)
 		t.Fail()
 	}
 }

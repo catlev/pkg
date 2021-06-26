@@ -10,11 +10,10 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-const NodeMaxWidth = 32
+const NodeMaxWidth = block.WordSize / 2
 const NodeMinWidth = NodeMaxWidth / 2
 
-// Stores a tree of block references. The referenced blocks contain data that this tree is acting as
-// an index for.
+// Maps keys to values, based on a block store.
 type Tree struct {
 	store block.Store
 	root  block.Word

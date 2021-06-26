@@ -6,9 +6,9 @@ import (
 	"github.com/catlev/pkg/store/block"
 )
 
-// Retrieve the block ID that may contain the specified key. If no such ID can be found, the
-// returned word is zero and the returned error is ErrNotFound. Errors can also be returned from the
-// storage layer.
+// Get queries the tree using the given key, yielding the associated value. If no value has been
+// associated with the given key, then ErrNotFound is returned as an error. Errors may also
+// originate from the block store.
 func (t *Tree) Get(key block.Word) (block.Word, error) {
 	n, err := t.findNode(key)
 	if err != nil {
@@ -17,12 +17,7 @@ func (t *Tree) Get(key block.Word) (block.Word, error) {
 
 	idx := n.probe(key)
 	if n.entries[idx].key != key {
-		return 0, ErrNotFound
+		return 0, fmt.Errorf("get %d: %w", key, ErrNotFound)
 	}
-	v := n.entries[n.probe(key)].value
-
-	if v == 0 {
-		return 0, ErrNotFound
-	}
-	return v, nil
+	return n.entries[idx].value, nil
 }

@@ -2,7 +2,6 @@ package tree
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/catlev/pkg/store/block"
 )
@@ -41,8 +40,6 @@ func (t *Tree) addNodeEntry(n *node, key, id block.Word) (*node, error) {
 
 	if n == nil {
 		rootNode := &node{
-			start:   0,
-			end:     math.MaxUint64,
 			entries: [32]nodeEntry{{0, t.root}, {key, id}},
 		}
 		rootNode.id, err = t.store.AddBlock(rootNode.entriesAsBlock())
@@ -83,8 +80,6 @@ func (t *Tree) splitNode(n *node, key block.Word) (*node, error) {
 	for i := NodeMinWidth; i < NodeMaxWidth; i++ {
 		n.entries[i] = nodeEntry{}
 	}
-
-	n.end = midpoint
 
 	id, err := t.store.AddBlock(newNode.entriesAsBlock())
 	if err != nil {

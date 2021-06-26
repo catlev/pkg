@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"math"
 	"testing"
 
 	"github.com/catlev/pkg/store/block"
@@ -84,7 +83,7 @@ func TestPutDeep(t *testing.T) {
 	id, _ := tree.Get(50)
 
 	if id != 100 {
-		t.Log(tree.readNode(nil, 0, 2560, 0, math.MaxUint64))
+		t.Log(tree.readNode(nil, 0, 2560))
 		t.Log(id)
 		t.Fail()
 	}

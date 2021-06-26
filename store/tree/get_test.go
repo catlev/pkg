@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"math"
 	"testing"
 
 	"github.com/catlev/pkg/store/block"
@@ -29,7 +28,7 @@ func TestProbe(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
 	tree := New(store, 0, start)
-	node, _ := tree.readNode(nil, 0, start, 0, math.MaxUint64)
+	node, _ := tree.readNode(nil, 0, start)
 
 	for i := 0; i < 25; i++ {
 		k := node.probe(block.Word(i))

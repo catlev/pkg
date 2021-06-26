@@ -2,7 +2,6 @@ package tree
 
 import (
 	"errors"
-	"math"
 	"sort"
 	"unsafe"
 
@@ -23,12 +22,11 @@ type Tree struct {
 }
 
 type node struct {
-	parent     *node
-	pos        int
-	id         block.Word
-	start, end block.Word
-	width      int
-	entries    [32]nodeEntry
+	parent  *node
+	pos     int
+	id      block.Word
+	width   int
+	entries [32]nodeEntry
 }
 
 type nodeEntry struct {
@@ -40,7 +38,7 @@ func New(s block.Store, dep int, pos block.Word) *Tree {
 }
 
 func (t *Tree) findNode(key block.Word) (*node, error) {
-	n, err := t.readNode(nil, 0, t.root, 0, math.MaxUint64)
+	n, err := t.readNode(nil, 0, t.root)
 	if err != nil {
 		return nil, err
 	}
@@ -56,18 +54,14 @@ func (t *Tree) findNode(key block.Word) (*node, error) {
 }
 
 func (t *Tree) followNode(n *node, idx int) (*node, error) {
-	v := n.entries[idx].value
-	start, end := n.rangeFor(idx)
-	return t.readNode(n, idx, v, start, end)
+	return t.readNode(n, idx, n.entries[idx].value)
 }
 
-func (t *Tree) readNode(parent *node, pos int, id, start, end block.Word) (*node, error) {
+func (t *Tree) readNode(parent *node, pos int, id block.Word) (*node, error) {
 	n := &node{
 		parent: parent,
 		pos:    pos,
 		id:     id,
-		start:  0,
-		end:    math.MaxUint64,
 	}
 
 	err := t.store.ReadBlock(id, n.entriesAsBlock())
@@ -99,23 +93,18 @@ func (t *Tree) writeNode(n *node) error {
 	return t.writeNode(n.parent)
 }
 
-func (n *node) probe(key block.Word) int {
-	return sort.Search(n.width, func(i int) bool { return n.entries[i].key > key }) - 1
+func (t *Tree) writeNodes(ns ...*node) error {
+	for _, n := range ns {
+		err := t.writeNode(n)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (n *node) rangeFor(idx int) (start, end block.Word) {
-	if idx == 0 {
-		start = n.start
-	} else {
-		start = n.entries[idx].key
-	}
-	idx++
-	if idx >= n.width {
-		end = n.end
-	} else {
-		end = n.entries[idx].key
-	}
-	return start, end
+func (n *node) probe(key block.Word) int {
+	return sort.Search(n.width, func(i int) bool { return n.entries[i].key > key }) - 1
 }
 
 func (n *node) insert(idx int, key, id block.Word) {

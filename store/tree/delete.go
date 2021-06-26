@@ -108,33 +108,18 @@ func (t *Tree) tryBorrowPre(n, pre *node) (bool, error) {
 		return false, nil
 	}
 
-	midpoint := pre.entries[NodeMinWidth].key
 	amt := pre.width - NodeMinWidth
+	midpoint := pre.entries[NodeMinWidth].key
 	copy(n.entries[amt:], n.entries[:])
 	copy(n.entries[:amt], pre.entries[NodeMinWidth:])
-
-	err := t.writeNode(n)
-	if err != nil {
-		return false, err
-	}
 
 	for i := NodeMinWidth; i < NodeMaxWidth; i++ {
 		pre.entries[i] = nodeEntry{}
 	}
 
-	err = t.writeNode(pre)
-	if err != nil {
-		return false, err
-	}
-
 	n.parent.entries[n.pos].key = midpoint
 
-	err = t.writeNode(n.parent)
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
+	return true, t.writeNodes(n, pre, n.parent)
 }
 
 func (t *Tree) tryBorrowSucc(n, succ *node) (bool, error) {
@@ -150,28 +135,13 @@ func (t *Tree) tryBorrowSucc(n, succ *node) (bool, error) {
 	copy(n.entries[n.width:], succ.entries[:amt])
 	copy(succ.entries[:], succ.entries[amt:])
 
-	err := t.writeNode(n)
-	if err != nil {
-		return false, err
-	}
-
 	for i := NodeMinWidth; i < NodeMaxWidth; i++ {
 		succ.entries[i] = nodeEntry{}
 	}
 
-	err = t.writeNode(succ)
-	if err != nil {
-		return false, err
-	}
-
 	succ.parent.entries[succ.pos].key = midpoint
 
-	err = t.writeNode(succ.parent)
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
+	return true, t.writeNodes(n, succ, succ.parent)
 }
 
 func (t *Tree) tryMergePre(n, pre *node) (bool, error) {
@@ -193,9 +163,8 @@ func (t *Tree) tryMergePre(n, pre *node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	t.store.FreeBlock(n.id)
 
-	return true, nil
+	return true, t.store.FreeBlock(n.id)
 }
 
 func (t *Tree) tryMergeSucc(n, succ *node) (bool, error) {
@@ -218,7 +187,6 @@ func (t *Tree) tryMergeSucc(n, succ *node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	t.store.FreeBlock(n.id)
 
-	return true, nil
+	return true, t.store.FreeBlock(n.id)
 }

@@ -15,7 +15,7 @@ func (t *Tree) Delete(key block.Word) error {
 	}
 
 	idx := n.probe(key)
-	if n.entries[idx].key != key {
+	if n.keyFor(idx) != key {
 		return fmt.Errorf("delete %d: %w", key, ErrNotFound)
 	}
 
@@ -23,7 +23,7 @@ func (t *Tree) Delete(key block.Word) error {
 }
 
 func (t *Tree) deleteFromNode(n *node, idx int) error {
-	n.remove(idx)
+	n.remove(idx, 1)
 
 	if n.width <= NodeMinWidth {
 		if n.parent != nil {
@@ -31,7 +31,7 @@ func (t *Tree) deleteFromNode(n *node, idx int) error {
 		}
 		if n.width == 2 {
 			// superfluous root node
-			t.root = n.entries[(idx+1)%2].key
+			t.root = n.entries[(idx+1)%2].value
 			t.depth--
 			return t.store.FreeBlock(n.id)
 		}
@@ -102,10 +102,11 @@ func (t *Tree) getSucc(n *node) (*node, error) {
 }
 
 func (t *Tree) borrowPre(n, pre *node) error {
-	amt := pre.width - NodeMinWidth
-	midpoint := pre.entries[NodeMinWidth].key
-	copy(n.entries[amt:], n.entries[:])
-	copy(n.entries[:amt], pre.entries[NodeMinWidth:])
+	midpoint := pre.keyFor(NodeMinWidth)
+
+	n.entries[0].key = n.keyFor(0)
+	n.insert(0, pre.entries[NodeMinWidth:pre.width]...)
+	n.entries[0].key = 0
 
 	for i := NodeMinWidth; i < NodeMaxWidth; i++ {
 		pre.entries[i] = nodeEntry{}
@@ -118,13 +119,12 @@ func (t *Tree) borrowPre(n, pre *node) error {
 
 func (t *Tree) borrowSucc(n, succ *node) error {
 	amt := succ.width - NodeMinWidth
-	midpoint := succ.entries[amt].key
-	copy(n.entries[n.width:], succ.entries[:amt])
-	copy(succ.entries[:], succ.entries[amt:])
+	midpoint := succ.keyFor(amt)
 
-	for i := NodeMinWidth; i < NodeMaxWidth; i++ {
-		succ.entries[i] = nodeEntry{}
-	}
+	succ.entries[0].key = succ.keyFor(0)
+	n.insert(n.width, succ.entries[:amt]...)
+	succ.remove(0, amt)
+	succ.entries[0].key = 0
 
 	succ.parent.entries[succ.pos].key = midpoint
 
@@ -132,6 +132,7 @@ func (t *Tree) borrowSucc(n, succ *node) error {
 }
 
 func (t *Tree) mergePre(n, pre *node) error {
+	n.entries[0].key = n.keyFor(0)
 	copy(pre.entries[pre.width:], n.entries[:])
 
 	err := t.writeNode(pre)
@@ -148,8 +149,11 @@ func (t *Tree) mergePre(n, pre *node) error {
 }
 
 func (t *Tree) mergeSucc(n, succ *node) error {
+	n.entries[0].key = n.keyFor(0)
+	succ.entries[0].key = succ.keyFor(0)
 	copy(succ.entries[n.width:], succ.entries[:])
 	copy(succ.entries[:n.width], n.entries[:])
+	n.entries[0].key = 0
 
 	err := t.writeNode(succ)
 	if err != nil {

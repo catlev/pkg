@@ -16,7 +16,7 @@ func (t *Tree) Get(key block.Word) (block.Word, error) {
 	}
 
 	idx := n.probe(key)
-	if n.entries[idx].key != key {
+	if n.keyFor(idx) != key {
 		return 0, fmt.Errorf("get %d: %w", key, ErrNotFound)
 	}
 	return n.entries[idx].value, nil

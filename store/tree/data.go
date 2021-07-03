@@ -68,7 +68,9 @@ func (t *Tree) readNode(parent *node, pos int, id block.Word) (*node, error) {
 		return nil, err
 	}
 
-	n.width = sort.Search(NodeMaxWidth, func(i int) bool { return i != 0 && n.entries[i].key == 0 })
+	n.width = sort.Search(NodeMaxWidth, func(i int) bool {
+		return i != 0 && n.entries[i].key == 0
+	})
 
 	return n, nil
 }
@@ -103,19 +105,35 @@ func (t *Tree) writeNodes(ns ...*node) error {
 }
 
 func (n *node) probe(key block.Word) int {
-	return sort.Search(n.width, func(i int) bool { return n.entries[i].key > key }) - 1
+	return sort.Search(n.width-1, func(i int) bool {
+		return n.entries[i+1].key > key
+	})
 }
 
-func (n *node) insert(idx int, key, id block.Word) {
-	idx++
-	copy(n.entries[idx+1:], n.entries[idx:])
-	n.entries[idx] = nodeEntry{key, id}
+func (n *node) insert(idx int, entries ...nodeEntry) {
+	copy(n.entries[idx+len(entries):], n.entries[idx:])
+	copy(n.entries[idx:], entries)
+	n.width += len(entries)
 }
 
-func (n *node) remove(idx int) {
-	copy(n.entries[idx:], n.entries[idx+1:])
+func (n *node) remove(idx, count int) {
+	n.width -= count
+	copy(n.entries[idx:], n.entries[idx+count:])
+	for i := n.width; i < NodeMaxWidth; i++ {
+		n.entries[i] = nodeEntry{}
+	}
 }
 
 func (n *node) entriesAsBlock() *block.Block {
 	return (*block.Block)(unsafe.Pointer(&n.entries))
+}
+
+func (n *node) keyFor(idx int) block.Word {
+	if n == nil {
+		return 0
+	}
+	if idx == 0 {
+		return n.parent.keyFor(n.pos)
+	}
+	return n.entries[idx].key
 }

@@ -20,7 +20,7 @@ func (t *Tree) Put(key, id block.Word) error {
 		return nil
 	}
 
-	if n.entries[idx].key == key {
+	if n.keyFor(idx) == key {
 		// updating existing entry, no need to make room
 		n.entries[idx].value = id
 		err = t.writeNode(n)
@@ -61,8 +61,7 @@ func (t *Tree) addNodeEntry(n *node, key, id block.Word) (*node, error) {
 		}
 	}
 
-	idx := n.probe(key)
-	n.insert(idx, key, id)
+	n.insert(n.probe(key)+1, nodeEntry{key, id})
 
 	err = t.writeNode(n)
 	if err != nil {
@@ -72,11 +71,10 @@ func (t *Tree) addNodeEntry(n *node, key, id block.Word) (*node, error) {
 }
 
 func (t *Tree) splitNode(n *node, key block.Word) (*node, error) {
-	midpoint := n.entries[NodeMinWidth].key
+	midpoint := n.keyFor(NodeMinWidth)
 
 	newNode := new(node)
-
-	copy(newNode.entries[:], n.entries[NodeMinWidth:])
+	newNode.insert(0, n.entries[NodeMinWidth:]...)
 
 	for i := NodeMinWidth; i < NodeMaxWidth; i++ {
 		n.entries[i] = nodeEntry{}
@@ -101,7 +99,6 @@ func (t *Tree) splitNode(n *node, key block.Word) (*node, error) {
 		newNode.parent = n.parent
 		newNode.pos = 1
 		newNode.id = id
-		newNode.width = NodeMinWidth
 		return newNode, nil
 	}
 
@@ -110,6 +107,6 @@ func (t *Tree) splitNode(n *node, key block.Word) (*node, error) {
 		id:      n.id,
 		pos:     0,
 		entries: n.entries,
-		width:   NodeMaxWidth / 2,
+		width:   NodeMinWidth,
 	}, nil
 }

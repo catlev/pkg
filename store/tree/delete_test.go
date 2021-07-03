@@ -1,23 +1,37 @@
 package tree
 
 import (
-	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/catlev/pkg/store/block"
 	"github.com/catlev/pkg/store/block/mem"
 )
 
+func assertDeletionSuccess(t *testing.T, tree *Tree, min, max, without block.Word) {
+	t.Helper()
+	tree.Delete(without)
+	for k := min; k < max; k++ {
+		t.Run(strconv.Itoa(int(k)), func(t *testing.T) {
+			v, err := tree.Get(k)
+
+			if (err != nil) != (k == without) {
+				t.Error(err)
+			}
+
+			if k != without && v != (k/10)+1 {
+				t.Fail()
+			}
+		})
+	}
+}
+
 func TestDeleteLeafSimple(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
 	tree := New(store, 0, start)
 
-	tree.Delete(10)
-
-	if _, err := tree.Get(10); !errors.Is(err, ErrNotFound) {
-		t.Fail()
-	}
+	assertDeletionSuccess(t, tree, 0, 32, 10)
 }
 
 func TestDeleteBorrowPre(t *testing.T) {
@@ -33,11 +47,7 @@ func TestDeleteBorrowPre(t *testing.T) {
 	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
 	tree := New(store, 1, start)
 
-	tree.Delete(35)
-
-	if _, err := tree.Get(35); !errors.Is(err, ErrNotFound) {
-		t.Fail()
-	}
+	assertDeletionSuccess(t, tree, 0, 48, 35)
 }
 
 func TestDeleteBorrowSucc(t *testing.T) {
@@ -50,15 +60,11 @@ func TestDeleteBorrowSucc(t *testing.T) {
 
 	d1, _ := store.AddBlock(b)
 
-	d2, _ := store.AddBlock(buildBlock(32))
-	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
+	d2, _ := store.AddBlock(buildBlock(16))
+	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
 	tree := New(store, 1, start)
 
-	tree.Delete(10)
-
-	if _, err := tree.Get(10); !errors.Is(err, ErrNotFound) {
-		t.Fail()
-	}
+	assertDeletionSuccess(t, tree, 0, 48, 10)
 }
 
 func TestDeleteMergePre(t *testing.T) {
@@ -70,20 +76,16 @@ func TestDeleteMergePre(t *testing.T) {
 	}
 	d1, _ := store.AddBlock(b1)
 
-	b2 := buildBlock(32)
+	b2 := buildBlock(16)
 	for i := 32; i < 64; i++ {
 		(*b2)[i] = 0
 	}
 	d2, _ := store.AddBlock(b2)
 
-	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
+	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
 	tree := New(store, 1, start)
 
-	tree.Delete(35)
-
-	if _, err := tree.Get(35); !errors.Is(err, ErrNotFound) {
-		t.Fail()
-	}
+	assertDeletionSuccess(t, tree, 0, 32, 20)
 }
 
 func TestDeleteMergeSucc(t *testing.T) {
@@ -95,18 +97,14 @@ func TestDeleteMergeSucc(t *testing.T) {
 	}
 	d1, _ := store.AddBlock(b1)
 
-	b2 := buildBlock(32)
+	b2 := buildBlock(16)
 	for i := 32; i < 64; i++ {
 		(*b2)[i] = 0
 	}
 	d2, _ := store.AddBlock(b2)
 
-	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
+	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
 	tree := New(store, 1, start)
 
-	tree.Delete(10)
-
-	if _, err := tree.Get(10); !errors.Is(err, ErrNotFound) {
-		t.Fail()
-	}
+	assertDeletionSuccess(t, tree, 0, 32, 10)
 }

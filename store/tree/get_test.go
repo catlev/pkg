@@ -21,6 +21,7 @@ func buildBlock(off int) *block.Block {
 		b[i*2] = block.Word(n)
 		b[i*2+1] = block.Word((n / 10) + 1)
 	}
+	b[0] = 0
 	return &b
 }
 

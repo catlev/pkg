@@ -1,5 +1,10 @@
 package block
 
+import (
+	"reflect"
+	"unsafe"
+)
+
 const ByteSize = 512
 const WordSize = 64
 
@@ -31,4 +36,18 @@ type Store interface {
 	Adder
 	Writer
 	Freer
+}
+
+func (b *Block) Bytes() []byte {
+	sh := (*reflect.SliceHeader)(unsafe.Pointer(b))
+	ws := int(unsafe.Sizeof(Word(0)))
+
+	// b is always in scope, so this is safe to do
+	rsh := &reflect.SliceHeader{
+		Data: sh.Data,
+		Len:  sh.Len * ws,
+		Cap:  sh.Cap * ws,
+	}
+
+	return *(*[]byte)(unsafe.Pointer(rsh))
 }

@@ -62,3 +62,25 @@ func TestGetDeep(t *testing.T) {
 		assertTreeProperty(t, i, k)
 	}
 }
+
+func TestGetRange(t *testing.T) {
+	store := mem.New()
+	d1, _ := store.AddBlock(buildBlock(0))
+	d2, _ := store.AddBlock(buildBlock(32))
+	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
+	tree := New(store, 1, start)
+
+	for i := 0; i < 60; i++ {
+		r := tree.GetRange(block.Word(i))
+		j := i
+
+		for r.Next() {
+			assertTreeProperty(t, j, r.Value())
+			j++
+		}
+
+		if j != 64 {
+			t.Errorf("start %d end %d", i, j)
+		}
+	}
+}

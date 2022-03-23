@@ -5,6 +5,7 @@ import (
 
 	"github.com/catlev/pkg/store/block"
 	"github.com/catlev/pkg/store/block/mem"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPutUpdate(t *testing.T) {
@@ -17,9 +18,7 @@ func TestPutUpdate(t *testing.T) {
 	tree.Put(20, 7)
 	id, _ := tree.Get(20)
 
-	if id != 7 {
-		t.Fail()
-	}
+	assert.Equal(t, block.Word(7), id)
 }
 
 func TestPutAddWithRoom(t *testing.T) {
@@ -32,9 +31,7 @@ func TestPutAddWithRoom(t *testing.T) {
 	tree.Put(25, 7)
 	id, _ := tree.Get(25)
 
-	if id != 7 {
-		t.Fail()
-	}
+	assert.Equal(t, block.Word(7), id)
 }
 
 func TestPutAddRoot(t *testing.T) {
@@ -49,9 +46,7 @@ func TestPutAddRoot(t *testing.T) {
 	tree.Put(25, 100)
 	id, _ := tree.Get(25)
 
-	if id != 100 {
-		t.Fail()
-	}
+	assert.Equal(t, block.Word(100), id)
 }
 
 func TestPutAddRootLarge(t *testing.T) {
@@ -66,9 +61,7 @@ func TestPutAddRootLarge(t *testing.T) {
 	tree.Put(45, 100)
 	id, _ := tree.Get(45)
 
-	if id != 100 {
-		t.Fail()
-	}
+	assert.Equal(t, block.Word(100), id)
 }
 
 func TestPutDeep(t *testing.T) {
@@ -82,9 +75,27 @@ func TestPutDeep(t *testing.T) {
 
 	id, _ := tree.Get(50)
 
-	if id != 100 {
-		t.Log(tree.readNode(nil, 0, 2560))
-		t.Log(id)
-		t.Fail()
-	}
+	assert.Equal(t, block.Word(100), id)
+}
+
+type appendingMemStore struct {
+	mem.Store
+}
+
+func (s *appendingMemStore) WriteBlock(id block.Word, b *block.Block) (block.Word, error) {
+	return s.AddBlock(b)
+}
+
+func TestPutNewBlock(t *testing.T) {
+	store := &appendingMemStore{*mem.New()}
+	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
+	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
+	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
+	tree := New(store, 1, start)
+
+	tree.Put(20, 7)
+	id, _ := tree.Get(20)
+
+	assert.Equal(t, block.Word(7), id)
+	assert.NotEqual(t, start, tree.Root())
 }

@@ -32,8 +32,12 @@ type nodeEntry struct {
 	key, value block.Word
 }
 
-func New(s block.Store, dep int, pos block.Word) *Tree {
-	return &Tree{s, pos, dep}
+func New(s block.Store, dep int, root block.Word) *Tree {
+	return &Tree{s, root, dep}
+}
+
+func (t *Tree) Root() block.Word {
+	return t.root
 }
 
 func (t *Tree) findNode(key block.Word) (*node, error) {

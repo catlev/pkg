@@ -3,6 +3,8 @@ package file
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path"
 	"sync"
@@ -13,7 +15,7 @@ var ErrWriteAfterEnd = errors.New("writing after end of file")
 // A File used as a persistent data store. This attempts to guard against some of the pitfalls in
 // reliably writing to a disk.
 type File struct {
-	file   *os.File
+	file   underlyingFile
 	tx     sync.Mutex
 	commit sync.RWMutex
 }
@@ -25,6 +27,16 @@ type Tx struct {
 	oldSize int64
 	newSize int64
 	journal *journal
+}
+
+type underlyingFile interface {
+	io.ReaderAt
+	io.WriterAt
+	io.Closer
+
+	Name() string
+	Stat() (fs.FileInfo, error)
+	Truncate(n int64) error
 }
 
 // Open a file for reading and possibly writing.
@@ -74,13 +86,26 @@ func (f *File) ReadAt(buf []byte, pos int64) (int, error) {
 	return f.file.ReadAt(buf, pos)
 }
 
-// Size returns the current size of the file.
-func (f *File) Size() (int64, error) {
-	stat, err := f.file.Stat()
+// WriteAt opens a transaction, writes the data, and then commits the transaction.
+func (f *File) WriteAt(buf []byte, pos int64) (int, error) {
+	tx, err := f.Begin()
 	if err != nil {
 		return 0, err
 	}
-	return stat.Size(), nil
+	defer tx.Close()
+
+	n, err := tx.WriteAt(buf, pos)
+	if err != nil {
+		return n, err
+	}
+
+	err = tx.Commit()
+	return n, err
+}
+
+// Size returns the current size of the file.
+func (f *File) Stat() (fs.FileInfo, error) {
+	return f.file.Stat()
 }
 
 func (f *File) Close() error {
@@ -91,34 +116,42 @@ func (f *File) Close() error {
 func (f *File) Begin() (*Tx, error) {
 	f.tx.Lock()
 
+	var stat fs.FileInfo
+	var j *journal
+	var tx *Tx
+
 	jf, err := os.OpenFile(f.file.Name()+".journal", os.O_RDWR|os.O_CREATE|os.O_EXCL, 0755)
 	if err != nil {
-		return nil, err
+		goto failure
 	}
 
-	stat, err := f.file.Stat()
+	stat, err = f.file.Stat()
 	if err != nil {
-		jf.Close()
-		return nil, err
+		goto failure
 	}
 
-	size := stat.Size()
+	j = newJournal(jf)
 
-	j := newJournal(jf)
-
-	if err := j.init(size); err != nil {
-		jf.Close()
-		return nil, err
+	err = j.init(stat.Size())
+	if err != nil {
+		goto failure
 	}
 
-	tx := &Tx{
+	tx = &Tx{
 		file:    f,
 		journal: j,
-		oldSize: size,
-		newSize: size,
+		oldSize: stat.Size(),
+		newSize: stat.Size(),
 	}
 
 	return tx, nil
+
+failure:
+	if jf != nil {
+		jf.Close()
+	}
+	f.tx.Unlock()
+	return nil, err
 }
 
 // WriteAt stages a change to the file.
@@ -153,11 +186,6 @@ func (f *Tx) WriteAt(buf []byte, pos int64) (int, error) {
 	}
 
 	return len(buf), nil
-}
-
-// Size returns the current size of the file.
-func (f *Tx) Size() (int64, error) {
-	return f.newSize, nil
 }
 
 // Truncate statges a change to the size of the file.

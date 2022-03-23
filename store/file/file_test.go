@@ -49,6 +49,14 @@ func TestFileUpdate(t *testing.T) {
 	require.Nil(t, f.Close())
 }
 
+func TestWriteAt(t *testing.T) {
+	f := aFileNamed(t, "testdata/eg4")
+	_, err := f.WriteAt([]byte{1, 2, 3}, 0)
+	require.Nil(t, err)
+	fileHasContents(t, f, []byte{1, 2, 3})
+	require.Nil(t, f.Close())
+}
+
 func aFileNamed(t *testing.T, name string) *File {
 	f, err := Open(name)
 	require.Nil(t, err)
@@ -59,9 +67,9 @@ func aFileNamed(t *testing.T, name string) *File {
 func fileHasContents(t *testing.T, f *File, expect []byte) {
 	t.Helper()
 
-	n, err := f.Size()
+	fi, err := f.Stat()
 	require.Nil(t, err)
-	assert.Equal(t, int64(len(expect)), n)
+	assert.Equal(t, int64(len(expect)), fi.Size())
 
 	if len(expect) == 0 {
 		return

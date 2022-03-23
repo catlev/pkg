@@ -104,7 +104,7 @@ func (j *journal) Check() error {
 	return nil
 }
 
-func (j *journal) Apply(f *os.File) error {
+func (j *journal) Apply(f underlyingFile) error {
 	err := j.seekAfterHeader()
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (j *journal) Apply(f *os.File) error {
 	return exec(r, f, operation.Apply)
 }
 
-func (j *journal) Recover(f *os.File) error {
+func (j *journal) Recover(f underlyingFile) error {
 	err := j.seekAfterHeader()
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (j *journal) seekAfterHeader() error {
 	return err
 }
 
-func exec(r *bufio.Reader, f *os.File, fn func(operation, *os.File) error) error {
+func exec(r *bufio.Reader, f underlyingFile, fn func(operation, underlyingFile) error) error {
 	var op operation
 	for {
 		err := op.ReadFrom(r)
@@ -167,7 +167,7 @@ func exec(r *bufio.Reader, f *os.File, fn func(operation, *os.File) error) error
 	return nil
 }
 
-func restoreSize(f *os.File, n int64) error {
+func restoreSize(f underlyingFile, n int64) error {
 	stat, err := f.Stat()
 	if err != nil {
 		return err
@@ -175,11 +175,7 @@ func restoreSize(f *os.File, n int64) error {
 	if n < stat.Size() {
 		return f.Truncate(n)
 	}
-	_, err = f.Seek(0, io.SeekEnd)
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(make([]byte, n-stat.Size()))
+	_, err = f.WriteAt(make([]byte, n-stat.Size()), stat.Size())
 	return err
 }
 
@@ -206,7 +202,7 @@ func (o *operation) ReadFrom(r *bufio.Reader) error {
 	return nil
 }
 
-func (o operation) Apply(f *os.File) error {
+func (o operation) Apply(f underlyingFile) error {
 	if len(o.to) == 0 {
 		return f.Truncate(o.at)
 	}
@@ -214,7 +210,7 @@ func (o operation) Apply(f *os.File) error {
 	return err
 }
 
-func (o operation) Recover(f *os.File) error {
+func (o operation) Recover(f underlyingFile) error {
 	if len(o.from) == 0 {
 		return nil
 	}

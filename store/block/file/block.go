@@ -2,18 +2,25 @@ package file
 
 import (
 	"io"
-	"os"
+	"io/fs"
 
 	"github.com/catlev/pkg/store/block"
 )
 
 type Store struct {
-	f     *os.File
+	f     File
 	maxID block.Word
 	free  block.Word
 }
 
-func New(f *os.File) (*Store, error) {
+type File interface {
+	io.ReaderAt
+	io.WriterAt
+
+	Stat() (fs.FileInfo, error)
+}
+
+func New(f File) (*Store, error) {
 	fi, err := f.Stat()
 	if err != nil {
 		return nil, err

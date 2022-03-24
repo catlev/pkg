@@ -15,19 +15,19 @@ type Range struct {
 // Get queries the tree using the given key, yielding the associated value. If no value has been
 // associated with the given key, then ErrNotFound is returned as an error. Errors may also
 // originate from the block store.
-func (t *Tree) Get(key block.Word) (v block.Word, err error) {
+func (t *Tree) Get(key block.Word) (v []block.Word, err error) {
 	wrapErr(&err, "Get", key)
 
 	n, err := t.findNode(key)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	idx := n.probe(key)
 	if n.keyFor(idx) != key {
-		return 0, ErrNotFound
+		return nil, ErrNotFound
 	}
-	return n.getRow(idx)[valueField], nil
+	return n.getRow(idx), nil
 }
 
 // GetRange queries the tree using the given key and returns an iterator over entries of the tree,

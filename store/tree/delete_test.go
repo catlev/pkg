@@ -21,7 +21,7 @@ func assertDeletionSuccess(t *testing.T, tree *Tree, min, max, without block.Wor
 				t.Error(err)
 			}
 
-			if k != without && v != (k/10)+1 {
+			if k != without && v[1] != (k/10)+1 {
 				t.Fail()
 			}
 		})
@@ -31,7 +31,7 @@ func assertDeletionSuccess(t *testing.T, tree *Tree, min, max, without block.Wor
 func TestDeleteLeafSimple(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
-	tree := New(store, 0, start)
+	tree := New(2, 0, store, 0, start)
 
 	assertDeletionSuccess(t, tree, 0, 32, 10)
 }
@@ -47,7 +47,7 @@ func TestDeleteBorrowPre(t *testing.T) {
 
 	d2, _ := store.AddBlock(b)
 	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 48, 35)
 }
@@ -64,7 +64,7 @@ func TestDeleteBorrowSucc(t *testing.T) {
 
 	d2, _ := store.AddBlock(buildBlock(16))
 	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 48, 10)
 }
@@ -85,7 +85,7 @@ func TestDeleteMergePre(t *testing.T) {
 	d2, _ := store.AddBlock(b2)
 
 	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 32, 20)
 }
@@ -106,7 +106,7 @@ func TestDeleteMergeSucc(t *testing.T) {
 	d2, _ := store.AddBlock(b2)
 
 	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 32, 10)
 }

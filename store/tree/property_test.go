@@ -11,11 +11,11 @@ import (
 func TestTreeProperties(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
-	tree := New(store, 0, start)
+	tree := New(3, 0, store, 0, start)
 
-	quick.Check(func(key, value block.Word) bool {
+	quick.Check(func(key, value1, value2 block.Word) bool {
 
-		err := tree.Put(key, value)
+		err := tree.Put([]block.Word{key, value1, value2})
 		if err != nil {
 			return false
 		}
@@ -25,7 +25,7 @@ func TestTreeProperties(t *testing.T) {
 			return false
 		}
 
-		return v == value
+		return v[1] == value1 && v[2] == value2
 
 	}, &quick.Config{
 		MaxCount: 200 * 1024,

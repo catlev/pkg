@@ -33,8 +33,8 @@ const (
 	branchColumns
 )
 
-func New(s block.Store, dep int, root block.Word) *Tree {
-	return &Tree{2, 0, s, root, dep}
+func New(columns, key int, s block.Store, dep int, root block.Word) *Tree {
+	return &Tree{columns, key, s, root, dep}
 }
 
 func (t *Tree) Root() block.Word {

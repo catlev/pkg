@@ -9,7 +9,11 @@ import (
 var ErrBadRow = errors.New("bad row")
 
 // Put establishes an association between key and value. Errors may be relayed from the block store.
-func (t *Tree) Put(key, value block.Word) error {
+func (t *Tree) Put(row []block.Word) error {
+	if len(row) != t.columns {
+		return ErrBadRow
+	}
+	key := row[t.key]
 
 	n, err := t.findNode(key)
 	if err != nil {
@@ -17,8 +21,6 @@ func (t *Tree) Put(key, value block.Word) error {
 	}
 
 	idx := n.probe(key)
-
-	row := []block.Word{key, value}
 
 	if rowsEqual(n.getRow(idx), row) {
 		// no update required

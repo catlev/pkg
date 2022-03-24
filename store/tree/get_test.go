@@ -28,7 +28,7 @@ func buildBlock(off int) *block.Block {
 func TestProbe(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
-	tree := New(store, 0, start)
+	tree := New(2, 0, store, 0, start)
 	node, _ := tree.findNode(0)
 
 	for i := 0; i < 25; i++ {
@@ -42,11 +42,11 @@ func TestProbe(t *testing.T) {
 func TestGetShallow(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
-	tree := New(store, 0, start)
+	tree := New(2, 0, store, 0, start)
 
 	for i := 0; i < 25; i++ {
 		k, _ := tree.Get(block.Word(i))
-		assertTreeProperty(t, i, k)
+		assertTreeProperty(t, i, k[1])
 	}
 }
 
@@ -55,11 +55,11 @@ func TestGetDeep(t *testing.T) {
 	d1, _ := store.AddBlock(buildBlock(0))
 	d2, _ := store.AddBlock(buildBlock(32))
 	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
 	for i := 0; i < 60; i++ {
 		k, _ := tree.Get(block.Word(i))
-		assertTreeProperty(t, i, k)
+		assertTreeProperty(t, i, k[1])
 	}
 }
 
@@ -68,7 +68,7 @@ func TestGetRange(t *testing.T) {
 	d1, _ := store.AddBlock(buildBlock(0))
 	d2, _ := store.AddBlock(buildBlock(32))
 	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
 	for i := 0; i < 60; i++ {
 		r := tree.GetRange(block.Word(i))

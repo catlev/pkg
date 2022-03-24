@@ -13,12 +13,12 @@ func TestPutUpdate(t *testing.T) {
 	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
 	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
 	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
-	tree.Put(20, 7)
-	id, _ := tree.Get(20)
+	tree.Put([]block.Word{20, 7})
+	row, _ := tree.Get(20)
 
-	assert.Equal(t, block.Word(7), id)
+	assert.Equal(t, block.Word(7), row[1])
 }
 
 func TestPutAddWithRoom(t *testing.T) {
@@ -26,12 +26,12 @@ func TestPutAddWithRoom(t *testing.T) {
 	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
 	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
 	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
-	tree.Put(25, 7)
-	id, _ := tree.Get(25)
+	tree.Put([]block.Word{25, 7})
+	row, _ := tree.Get(25)
 
-	assert.Equal(t, block.Word(7), id)
+	assert.Equal(t, block.Word(7), row[1])
 }
 
 func TestPutAddRoot(t *testing.T) {
@@ -41,12 +41,12 @@ func TestPutAddRoot(t *testing.T) {
 		b[i] = block.Word(i)
 	}
 	start, _ := store.AddBlock(&b)
-	tree := New(store, 0, start)
+	tree := New(2, 0, store, 0, start)
 
-	tree.Put(25, 100)
-	id, _ := tree.Get(25)
+	tree.Put([]block.Word{25, 100})
+	row, _ := tree.Get(25)
 
-	assert.Equal(t, block.Word(100), id)
+	assert.Equal(t, block.Word(100), row[1])
 }
 
 func TestPutAddRootLarge(t *testing.T) {
@@ -56,26 +56,26 @@ func TestPutAddRootLarge(t *testing.T) {
 		b[i] = block.Word(i)
 	}
 	start, _ := store.AddBlock(&b)
-	tree := New(store, 0, start)
+	tree := New(2, 0, store, 0, start)
 
-	tree.Put(45, 100)
-	id, _ := tree.Get(45)
+	tree.Put([]block.Word{45, 100})
+	row, _ := tree.Get(45)
 
-	assert.Equal(t, block.Word(100), id)
+	assert.Equal(t, block.Word(100), row[1])
 }
 
 func TestPutDeep(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
-	tree := New(store, 0, start)
+	tree := New(2, 0, store, 0, start)
 
 	for i := 0; i < 100; i++ {
-		tree.Put(block.Word(i), block.Word(i*2))
+		tree.Put([]block.Word{block.Word(i), block.Word(i * 2)})
 	}
 
-	id, _ := tree.Get(50)
+	row, _ := tree.Get(50)
 
-	assert.Equal(t, block.Word(100), id)
+	assert.Equal(t, block.Word(100), row[1])
 }
 
 type appendingMemStore struct {
@@ -91,11 +91,11 @@ func TestPutNewBlock(t *testing.T) {
 	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
 	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
 	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
-	tree := New(store, 1, start)
+	tree := New(2, 0, store, 1, start)
 
-	tree.Put(20, 7)
-	id, _ := tree.Get(20)
+	tree.Put([]block.Word{20, 7})
+	row, _ := tree.Get(20)
 
-	assert.Equal(t, block.Word(7), id)
+	assert.Equal(t, block.Word(7), row[1])
 	assert.NotEqual(t, start, tree.Root())
 }

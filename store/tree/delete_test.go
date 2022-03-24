@@ -13,6 +13,8 @@ func assertDeletionSuccess(t *testing.T, tree *Tree, min, max, without block.Wor
 	tree.Delete(without)
 	for k := min; k < max; k++ {
 		t.Run(strconv.Itoa(int(k)), func(t *testing.T) {
+			t.Helper()
+
 			v, err := tree.Get(k)
 
 			if (err != nil) != (k == without) {

@@ -27,7 +27,7 @@ func (t *Tree) Get(key block.Word) (v block.Word, err error) {
 	if n.keyFor(idx) != key {
 		return 0, ErrNotFound
 	}
-	return n.entries[idx].value, nil
+	return n.getRow(idx)[valueField], nil
 }
 
 // GetRange queries the tree using the given key and returns an iterator over entries of the tree,
@@ -66,12 +66,12 @@ func (r *Range) Next() bool {
 	return ok
 }
 
-func (r *Range) Key() block.Word {
-	return r.node.keyFor(r.pos)
+func (r *Range) This() []block.Word {
+	return r.node.getRow(r.pos)
 }
 
 func (r *Range) Value() block.Word {
-	return r.node.entries[r.pos].value
+	return r.This()[valueField]
 }
 
 func (r *Range) Err() error {
@@ -97,7 +97,7 @@ func (r *Range) loadNextNode(n *node) (*node, bool) {
 		n.parent = p
 	}
 
-	p, err := r.tree.followNode(n.parent, next)
+	p, err := r.tree.followNode(n.columns, n.key, n.parent, next)
 	if err != nil {
 		r.err = err
 		return nil, false

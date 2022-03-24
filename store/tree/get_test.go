@@ -16,7 +16,7 @@ func assertTreeProperty(t *testing.T, i int, k block.Word) {
 
 func buildBlock(off int) *block.Block {
 	var b block.Block
-	for i := 0; i < NodeMaxWidth; i++ {
+	for i := 0; i < 32; i++ {
 		n := i + off
 		b[i*2] = block.Word(n)
 		b[i*2+1] = block.Word((n / 10) + 1)
@@ -29,7 +29,7 @@ func TestProbe(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
 	tree := New(store, 0, start)
-	node, _ := tree.readNode(nil, 0, start)
+	node, _ := tree.findNode(0)
 
 	for i := 0; i < 25; i++ {
 		k := node.probe(block.Word(i))

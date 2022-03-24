@@ -10,30 +10,31 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
-const NodeMaxWidth = block.WordSize / 2
-const NodeMinWidth = NodeMaxWidth / 2
-
 // Maps keys to values, based on a block store.
 type Tree struct {
-	store block.Store
-	root  block.Word
-	depth int
+	columns, key int
+	store        block.Store
+	root         block.Word
+	depth        int
 }
 
 type node struct {
-	parent  *node
-	pos     int
-	id      block.Word
-	width   int
-	entries [32]nodeEntry
+	columns, key int
+	parent       *node
+	pos          int
+	id           block.Word
+	width        int
+	entries      block.Block
 }
 
-type nodeEntry struct {
-	key, value block.Word
-}
+const (
+	keyField = iota
+	valueField
+	branchColumns
+)
 
 func New(s block.Store, dep int, root block.Word) *Tree {
-	return &Tree{s, root, dep}
+	return &Tree{2, 0, s, root, dep}
 }
 
 func (t *Tree) Root() block.Word {
@@ -41,39 +42,45 @@ func (t *Tree) Root() block.Word {
 }
 
 func (t *Tree) findNode(key block.Word) (*node, error) {
-	n, err := t.readNode(nil, 0, t.root)
+	if t.depth == 0 {
+		return t.readNode(t.columns, t.key, nil, 0, t.root)
+	}
+
+	n, err := t.readNode(branchColumns, keyField, nil, 0, t.root)
 	if err != nil {
 		return nil, err
 	}
 
-	for d := t.depth - 1; d >= 0; d-- {
-		n, err = t.followNode(n, n.probe(key))
+	for d := t.depth - 1; d > 0; d-- {
+		n, err = t.followNode(branchColumns, keyField, n, n.probe(key))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return n, nil
+	return t.followNode(t.columns, t.key, n, n.probe(key))
 }
 
-func (t *Tree) followNode(n *node, idx int) (*node, error) {
-	return t.readNode(n, idx, n.entries[idx].value)
+func (t *Tree) followNode(columns, key int, n *node, idx int) (*node, error) {
+	return t.readNode(columns, key, n, idx, n.getRow(idx)[valueField])
 }
 
-func (t *Tree) readNode(parent *node, pos int, id block.Word) (*node, error) {
+func (t *Tree) readNode(columns, key int, parent *node, pos int, id block.Word) (*node, error) {
 	n := &node{
-		parent: parent,
-		pos:    pos,
-		id:     id,
+		columns: columns,
+		key:     key,
+		parent:  parent,
+		pos:     pos,
+		id:      id,
 	}
 
-	err := t.store.ReadBlock(id, n.entriesAsBlock())
+	err := t.store.ReadBlock(id, &n.entries)
 	if err != nil {
 		return nil, err
 	}
 
-	n.width = sort.Search(NodeMaxWidth, func(i int) bool {
-		return i != 0 && n.entries[i].key == 0
+	n.width = sort.Search(n.maxWidth(), func(i int) bool {
+		return i != 0 && n.keyFor(i) == 0
 	})
 
 	return n, nil
@@ -94,7 +101,7 @@ func (t *Tree) writeNode(n *node) error {
 		return nil
 	}
 
-	n.parent.entries[n.pos].value = id
+	n.parent.getRow(n.pos)[valueField] = id
 	return t.writeNode(n.parent)
 }
 
@@ -110,22 +117,22 @@ func (t *Tree) writeNodes(ns ...*node) error {
 
 func (n *node) probe(key block.Word) int {
 	return sort.Search(n.width-1, func(i int) bool {
-		return n.entries[i+1].key > key
+		return n.keyFor(i+1) > key
 	})
 }
 
-func (n *node) insert(idx int, entries ...nodeEntry) {
-	copy(n.entries[idx+len(entries):], n.entries[idx:])
-	copy(n.entries[idx:], entries)
+func (n *node) insert(idx int, entries ...[]block.Word) {
+	copy(n.entries[(idx+len(entries))*n.columns:], n.entries[idx*n.columns:])
+	for i, r := range entries {
+		copy(n.entries[(idx+i)*n.columns:], r)
+	}
 	n.width += len(entries)
 }
 
 func (n *node) remove(idx, count int) {
 	n.width -= count
-	copy(n.entries[idx:], n.entries[idx+count:])
-	for i := n.width; i < NodeMaxWidth; i++ {
-		n.entries[i] = nodeEntry{}
-	}
+	copy(n.entries[idx*n.columns:], n.entries[(idx+count)*n.columns:])
+	n.clearRows(n.width, -1)
 }
 
 func (n *node) entriesAsBlock() *block.Block {
@@ -139,5 +146,44 @@ func (n *node) keyFor(idx int) block.Word {
 	if idx == 0 {
 		return n.parent.keyFor(n.pos)
 	}
-	return n.entries[idx].key
+	return n.getRow(idx)[n.key]
+}
+
+func (n *node) getRow(idx int) []block.Word {
+	return n.entries[idx*n.columns : (idx+1)*n.columns]
+}
+
+func (n *node) getRows(from, to int) [][]block.Word {
+	rows := make([][]block.Word, to-from)
+	for i := range rows {
+		rows[i] = n.entries[(i+from)*n.columns : (i+from+1)*n.columns]
+	}
+	return rows
+}
+
+func (n *node) clearRows(from, to int) {
+	stop := to * n.columns
+	if to == -1 {
+		stop = block.WordSize
+	}
+	for i := from * n.columns; i < stop; i++ {
+		n.entries[i] = 0
+	}
+}
+
+func (n *node) minWidth() int {
+	return n.maxWidth() / 2
+}
+
+func (n *node) maxWidth() int {
+	return block.WordSize / n.columns
+}
+
+func rowsEqual(r, s []block.Word) bool {
+	for i := range r {
+		if r[i] != s[i] {
+			return false
+		}
+	}
+	return true
 }

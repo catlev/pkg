@@ -78,7 +78,10 @@ func (p *parser) prefix() Tree {
 	switch p.next() {
 	case scanner.String:
 		start, end := p.pos()
-		return p.leaf(Value, start, end)
+		return p.leaf(String, start, end)
+	case scanner.Int:
+		start, end := p.pos()
+		return p.leaf(Integer, start, end)
 	case scanner.Ident, '*':
 		start, end := p.pos()
 		return p.leaf(Term, start, end)
@@ -102,7 +105,7 @@ var infixes = [256]struct {
 }{
 	'/': {Join, 80, 80},
 	'&': {Intersection, 70, 70},
-	'|': {Union, 70, 70},
+	'|': {Union, 60, 60},
 }
 
 // Parse an expression in infix position.
@@ -116,7 +119,7 @@ func (p *parser) infix(prec int, left Tree) Tree {
 		outer = inf.outer
 		inner = inf.inner
 	}
-	if p.err != nil || kind == Value || prec >= outer {
+	if p.err != nil || kind == String || prec >= outer {
 		return Tree{}
 	}
 	p.next()

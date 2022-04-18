@@ -14,8 +14,8 @@ const (
 	// Invalid - Not a valid AST
 	Invalid Kind = iota
 
-	// Value - literal value.
-	Value
+	String
+	Integer
 
 	// Term - name of a model element.
 	Term

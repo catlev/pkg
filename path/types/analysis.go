@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+
 	"github.com/catlev/pkg/path/syntax"
 )
 
@@ -9,7 +10,7 @@ var ErrUnknown = errors.New("unknown path expression")
 
 func Analyze(m Model, expr syntax.Tree) (Path, error) {
 	switch expr.Kind {
-	case syntax.Value:
+	case syntax.Integer:
 		return analyzeValue(m, expr)
 	case syntax.Term:
 		return analyzeTerm(m, expr)

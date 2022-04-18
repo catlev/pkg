@@ -16,7 +16,7 @@ func branch(kind Kind, children ...Tree) Tree {
 }
 
 func TestExpr(t *testing.T) {
-	e := `a/(~name|boom)&"hello"`
+	e := `a/(~name|boom)&"hello"/123`
 	n, err := Parse(strings.NewReader(e))
 	if err != nil {
 		t.Fatalf("%s", err)
@@ -29,7 +29,10 @@ func TestExpr(t *testing.T) {
 				leaf(Term, "boom"),
 			),
 		),
-		leaf(Value, `"hello"`),
+		branch(Join,
+			leaf(String, `"hello"`),
+			leaf(Integer, "123"),
+		),
 	)
 	if !reflect.DeepEqual(n, expected) {
 		t.Errorf("%v != %v", n, expected)

@@ -32,7 +32,7 @@ func TestAnalysis(t *testing.T) {
 		{
 			"Value",
 			nil,
-			`"a"`,
+			`1`,
 			[]Alternative{{absoluteType, attributeType}},
 		},
 		{

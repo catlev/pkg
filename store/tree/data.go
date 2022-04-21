@@ -41,6 +41,10 @@ func (t *Tree) Root() block.Word {
 	return t.root
 }
 
+func (t *Tree) Depth() int {
+	return t.depth
+}
+
 func (t *Tree) findNode(key block.Word) (*node, error) {
 	if t.depth == 0 {
 		return t.readNode(t.columns, t.key, nil, 0, t.root)

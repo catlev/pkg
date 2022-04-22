@@ -1,0 +1,41 @@
+entity_model {
+    name: "string"
+
+    entity_type {
+        name: "value"
+
+        attribute { name: "id"        type: "integer" identifying: "true" }
+        attribute { name: "parent_id" type: "integer" }
+        attribute { name: "char_data" type: "integer" }
+
+        relationship { name: "parent" impl: "~value/value&parent_id/~id" }
+        relationship { name: "next"   impl: "~value/data&id/~parent_id" }
+    }
+
+    entity_type {
+        name: "data"
+
+        attribute { name: "parent_id" type: "integer" identifying: "true" }
+        attribute { name: "char_data" type: "integer" identifying: "true" }
+        attribute { name: "id"        type: "integer" }
+
+        relationship { name: "value" impl: "~data/value&id/~id" }
+    }
+}
+
+-----
+
+func lookupString(h *eval.Host, v string) (block.Word, bool) {
+    var cur := h.Eval(h.Model("string"), "value&0/~id")
+    for _, part := range splitString(v) {
+        cur = h.Eval(cur, "(next&$0/~char_data)/value", part)
+    }
+    x, ok := cur.ExactlyOne()
+    if !ok {
+        return 0, false
+    }
+    return x.Fields[0], true
+}
+
+
+

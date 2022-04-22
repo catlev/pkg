@@ -32,20 +32,9 @@ type Box struct {
 
 type arm struct {
 	entityID block.Word
-	where    []clause
+	mask     uint64
+	where    []block.Word
 }
-
-type clause struct {
-	condition condition
-	value     block.Word
-}
-
-type condition int
-
-const (
-	unconstrained condition = iota
-	equal
-)
 
 type errCursor struct {
 	err error
@@ -64,9 +53,8 @@ func (*errCursor) This() Object {
 }
 
 type whereCursor struct {
-	base     Cursor
-	entityID block.Word
-	where    []clause
+	base Cursor
+	arm  arm
 }
 
 func (c *whereCursor) Err() error {
@@ -79,7 +67,7 @@ func (c *whereCursor) Next() bool {
 			return false
 		}
 		o := c.base.This()
-		if o.EntityID != c.entityID {
+		if o.EntityID != c.arm.entityID {
 			return false
 		}
 		if c.rowMatches(o) {
@@ -89,11 +77,11 @@ func (c *whereCursor) Next() bool {
 }
 
 func (c *whereCursor) rowMatches(o Object) bool {
-	for i, p := range c.where {
-		if p.condition == unconstrained {
+	for i, p := range c.arm.where {
+		if !c.arm.constrains(i) {
 			continue
 		}
-		if o.Fields[i] != p.value {
+		if o.Fields[i] != p {
 			return false
 		}
 	}
@@ -121,7 +109,7 @@ func (c *valueCursor) Next() bool {
 func (c *valueCursor) This() Object {
 	return Object{
 		EntityID: c.arm.entityID,
-		Fields:   []block.Word{c.arm.where[0].value},
+		Fields:   []block.Word{c.arm.where[0]},
 	}
 }
 
@@ -236,9 +224,8 @@ func (s Box) runQuery(a arm) Cursor {
 	}
 	base := s.store.FindEntities(a.entityID, s.buildKey(a))
 	return &whereCursor{
-		base:     base,
-		entityID: a.entityID,
-		where:    a.where,
+		base: base,
+		arm:  a,
 	}
 }
 
@@ -249,10 +236,10 @@ func (s Box) buildKey(a arm) []block.Word {
 		if !c.Identifying {
 			break
 		}
-		if a.where[i].condition == unconstrained {
+		if !a.constrains(i) {
 			break
 		}
-		key = append(key, a.where[i].value)
+		key = append(key, a.where[i])
 	}
 	return key
 }
@@ -298,17 +285,21 @@ func (s *Box) simplify() {
 	s.arms = arms
 }
 
+func (a arm) constrains(column int) bool {
+	return a.mask&(1<<column) != 0
+}
+
 func (a arm) supersetOf(b arm) bool {
 	if a.entityID != b.entityID {
 		return false
 	}
-	for i, a := range a.where {
-		b := b.where[i]
+	for i, p := range a.where {
+		q := b.where[i]
 
-		if a.condition == unconstrained {
+		if !a.constrains(i) {
 			continue
 		}
-		if a.value == b.value {
+		if p == q {
 			continue
 		}
 
@@ -321,14 +312,15 @@ func (a arm) before(b arm) bool {
 	if a.entityID != b.entityID {
 		return a.entityID < b.entityID
 	}
+
+	if a.mask != b.mask {
+		return a.mask < b.mask
+	}
+
 	for i, a := range a.where {
 		b := b.where[i]
-
-		if a.condition != b.condition {
-			return a.condition < b.condition
-		}
-		if a.value != b.value {
-			return a.value < b.value
+		if a != b {
+			return a < b
 		}
 	}
 
@@ -339,22 +331,22 @@ func (a arm) merge(b arm) (arm, bool) {
 	if a.entityID != b.entityID {
 		return arm{}, false
 	}
-	res := make([]clause, len(a.where))
-	for i, a := range a.where {
-		b := b.where[i]
-		if a.condition == unconstrained {
-			res[i] = b
+	res := make([]block.Word, len(a.where))
+	for i, p := range a.where {
+		q := b.where[i]
+		if !a.constrains(i) {
+			res[i] = q
 			continue
 		}
-		if b.condition == unconstrained {
-			res[i] = a
+		if !b.constrains(i) {
+			res[i] = p
 			continue
 		}
-		if a.value == b.value {
-			res[i] = a
+		if p == q {
+			res[i] = p
 			continue
 		}
 		return arm{}, false
 	}
-	return arm{a.entityID, res}, true
+	return arm{a.entityID, a.mask | b.mask, res}, true
 }

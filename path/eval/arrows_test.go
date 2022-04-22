@@ -98,10 +98,12 @@ func (s *testStore) FindEntities(entityID block.Word, key []block.Word) Cursor {
 		if a.entityID != entityID {
 			continue
 		}
+		width := len(s.model.Types[a.entityID].Rels)
 
 		return &testCursor{
 			arm:   a,
-			width: len(s.model.Types[a.entityID].Rels),
+			width: width,
+			pos:   -width,
 		}
 	}
 	return &errCursor{nil}
@@ -165,6 +167,7 @@ func TestEval(t *testing.T) {
 	h := NewHost(m, s)
 
 	b := h.Eval(h.Absolute(), "1|(person&2/~rank)/size")
+
 	assert.True(t, cursorEquals(b.Enumerate(), []Object{
 		{EntityID: model.IntegerID, Fields: []block.Word{1}},
 		{EntityID: model.IntegerID, Fields: []block.Word{10}},

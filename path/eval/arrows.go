@@ -95,10 +95,8 @@ func (p *attrPath) Follow(xs Box) Box {
 		for c.Next() {
 			res.arms = append(res.arms, arm{
 				entityID: p.valueID,
-				where: []clause{{
-					condition: equal,
-					value:     c.This().Fields[p.column],
-				}},
+				mask:     1,
+				where:    []block.Word{c.This().Fields[p.column]},
 			})
 		}
 	}
@@ -130,13 +128,12 @@ func (p *attrFilter) Follow(xs Box) Box {
 		model: xs.model,
 	}
 	for _, a := range xs.findAll(p.valueID) {
-		where := make([]clause, len(xs.model.Types[p.entityID].Rels))
-		where[p.column] = clause{
-			condition: equal,
-			value:     a.where[0].value,
-		}
+		where := make([]block.Word, len(xs.model.Types[p.entityID].Rels))
+		where[p.column] = a.where[0]
+
 		res.arms = append(res.arms, arm{
 			entityID: p.entityID,
+			mask:     1 << p.column,
 			where:    where,
 		})
 	}
@@ -173,10 +170,8 @@ func (p *valuePath) Follow(xs Box) Box {
 	if len(xs.findAll(model.AbsoluteID)) != 0 {
 		res.arms = append(res.arms, arm{
 			entityID: p.valueID,
-			where: []clause{{
-				condition: equal,
-				value:     value,
-			}},
+			mask:     1,
+			where:    []block.Word{value},
 		})
 	}
 	return res
@@ -209,8 +204,8 @@ func (p *valueFilter) Follow(xs Box) Box {
 	}
 	vs := xs.findAll(p.valueID)
 	if idx := sort.Search(len(vs), func(i int) bool {
-		return vs[i].where[0].value >= value
-	}); idx == len(vs) || vs[idx].where[0].value != value {
+		return vs[i].where[0] >= value
+	}); idx == len(vs) || vs[idx].where[0] != value {
 		return res
 	}
 	res.arms = append(res.arms, arm{
@@ -242,7 +237,7 @@ func (p *entityPath) Follow(xs Box) Box {
 	if len(xs.findAll(model.AbsoluteID)) != 0 {
 		res.arms = append(res.arms, arm{
 			entityID: p.entityID,
-			where:    make([]clause, len(xs.model.Types[p.entityID].Rels)),
+			where:    make([]block.Word, len(xs.model.Types[p.entityID].Rels)),
 		})
 	}
 	return res

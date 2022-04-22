@@ -28,6 +28,7 @@ func TestTreeProperties(t *testing.T) {
 		return v[1] == value1 && v[2] == value2
 
 	}, &quick.Config{
+		// need to do it a lot of times to get some depth in the tree
 		MaxCount: 200 * 1024,
 	})
 

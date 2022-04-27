@@ -232,7 +232,7 @@ func (s Box) runQuery(a arm) Cursor {
 func (s Box) buildKey(a arm) []block.Word {
 	t := s.model.Types[a.entityID]
 	var key []block.Word
-	for i, c := range t.Rels {
+	for i, c := range t.Attributes {
 		if !c.Identifying {
 			break
 		}

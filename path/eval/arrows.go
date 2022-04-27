@@ -128,7 +128,7 @@ func (p *attrFilter) Follow(xs Box) Box {
 		model: xs.model,
 	}
 	for _, a := range xs.findAll(p.valueID) {
-		where := make([]block.Word, len(xs.model.Types[p.entityID].Rels))
+		where := make([]block.Word, len(xs.model.Types[p.entityID].Attributes))
 		where[p.column] = a.where[0]
 
 		res.arms = append(res.arms, arm{
@@ -237,7 +237,7 @@ func (p *entityPath) Follow(xs Box) Box {
 	if len(xs.findAll(model.AbsoluteID)) != 0 {
 		res.arms = append(res.arms, arm{
 			entityID: p.entityID,
-			where:    make([]block.Word, len(xs.model.Types[p.entityID].Rels)),
+			where:    make([]block.Word, len(xs.model.Types[p.entityID].Attributes)),
 		})
 	}
 	return res

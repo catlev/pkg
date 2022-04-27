@@ -95,7 +95,7 @@ func (c *Compiler) compileTerm(name string) (Arrow, error) {
 				entityID: t.ID,
 			})
 		}
-		for i, c := range t.Rels {
+		for i, c := range t.Attributes {
 			if c.Name != name {
 				continue
 			}

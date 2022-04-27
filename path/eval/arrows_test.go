@@ -18,7 +18,7 @@ func TestCompile(t *testing.T) {
 			{
 				Name: "person",
 				ID:   5,
-				Rels: []model.Relationship{
+				Attributes: model.Attributes{
 					{
 						Name: "age",
 						Type: model.IntegerID,
@@ -98,7 +98,7 @@ func (s *testStore) FindEntities(entityID block.Word, key []block.Word) Cursor {
 		if a.entityID != entityID {
 			continue
 		}
-		width := len(s.model.Types[a.entityID].Rels)
+		width := len(s.model.Types[a.entityID].Attributes)
 
 		return &testCursor{
 			arm:   a,
@@ -139,7 +139,7 @@ func TestEval(t *testing.T) {
 			3: {
 				ID:   3,
 				Name: "person",
-				Rels: []model.Relationship{
+				Attributes: model.Attributes{
 					{
 						Name: "rank",
 						Type: model.IntegerID,

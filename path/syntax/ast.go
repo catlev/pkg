@@ -14,23 +14,17 @@ const (
 	// Invalid - Not a valid AST
 	Invalid Kind = iota
 
+	// String value
 	String
+
+	// Integer value
 	Integer
 
-	// Term - name of a model element.
-	Term
+	// Rel name.
+	Rel
 
-	// Inverse - a path with its direction reversed.
-	Inverse
-
-	// Join - two paths connected serially.
-	Join
-
-	// Intersection - set operation on paths.
-	Intersection
-
-	// Union - set operation on paths.
-	Union
+	// Op - name of an operation (join, and, or, reverse).
+	Op
 )
 
 // A Tree is the result of parsing a path expression.

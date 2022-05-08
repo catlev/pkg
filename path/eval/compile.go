@@ -9,15 +9,34 @@ import (
 
 type Compiler struct {
 	model *model.EntityModel
+	ops   map[string]OpSpec
 }
 
-func NewCompiler(m *model.EntityModel) *Compiler {
-	return &Compiler{model: m}
+type OpSpec func(args []Arrow) (Arrow, error)
+
+var StandardOps = map[string]OpSpec{
+	"inverse": func(args []Arrow) (Arrow, error) {
+		return args[0].Reverse(), nil
+	},
+	"union": func(args []Arrow) (Arrow, error) {
+		return &unionPath{left: args[0], right: args[1]}, nil
+	},
+	"intersection": func(args []Arrow) (Arrow, error) {
+		return &intersectionPath{left: args[0], right: args[1]}, nil
+	},
+	"join": func(args []Arrow) (Arrow, error) {
+		return &joinPath{left: args[0], right: args[1]}, nil
+	},
+}
+
+func NewCompiler(m *model.EntityModel, ops map[string]OpSpec) *Compiler {
+	return &Compiler{model: m, ops: ops}
 }
 
 var (
 	ErrUnsupportedSyntax = errors.New("unsupported syntax")
 	ErrUnknownTerm       = errors.New("unknown term")
+	ErrUnknownOp         = errors.New("unknown op")
 )
 
 func (c *Compiler) Compile(tree syntax.Tree) (Arrow, error) {
@@ -28,60 +47,23 @@ func (c *Compiler) Compile(tree syntax.Tree) (Arrow, error) {
 			value:   tree.Value,
 		}, nil
 
-	case syntax.Term:
+	case syntax.Rel:
 		return c.compileTerm(tree.Value)
 
-	case syntax.Inverse:
-		inner, err := c.Compile(tree.Children[0])
-		if err != nil {
-			return nil, err
+	case syntax.Op:
+		op := c.ops[tree.Value]
+		if op == nil {
+			return nil, ErrUnknownOp
 		}
-		return inner.Reverse(), nil
-
-	case syntax.Union:
-		left, err := c.Compile(tree.Children[0])
-		if err != nil {
-			return nil, err
+		args := make([]Arrow, len(tree.Children))
+		for i, p := range tree.Children {
+			a, err := c.Compile(p)
+			if err != nil {
+				return nil, err
+			}
+			args[i] = a
 		}
-		right, err := c.Compile(tree.Children[1])
-		if err != nil {
-			return nil, err
-		}
-
-		return &unionPath{
-			left:  left,
-			right: right,
-		}, nil
-
-	case syntax.Intersection:
-		left, err := c.Compile(tree.Children[0])
-		if err != nil {
-			return nil, err
-		}
-		right, err := c.Compile(tree.Children[1])
-		if err != nil {
-			return nil, err
-		}
-
-		return &intersectionPath{
-			left:  left,
-			right: right,
-		}, nil
-
-	case syntax.Join:
-		left, err := c.Compile(tree.Children[0])
-		if err != nil {
-			return nil, err
-		}
-		right, err := c.Compile(tree.Children[1])
-		if err != nil {
-			return nil, err
-		}
-
-		return &joinPath{
-			left:  left,
-			right: right,
-		}, nil
+		return op(args)
 	}
 	return nil, ErrUnsupportedSyntax
 }

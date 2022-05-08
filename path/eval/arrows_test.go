@@ -31,7 +31,7 @@ func TestCompile(t *testing.T) {
 			},
 		},
 	}
-	c := NewCompiler(m)
+	c := NewCompiler(m, StandardOps)
 	s, err := syntax.ParseString(`123|~(person/age)&rank`)
 	require.Nil(t, err)
 	p, err := c.Compile(s)

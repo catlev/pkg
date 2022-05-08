@@ -12,16 +12,10 @@ func Analyze(m Model, expr syntax.Tree) (Path, error) {
 	switch expr.Kind {
 	case syntax.Integer:
 		return analyzeValue(m, expr)
-	case syntax.Term:
+	case syntax.Rel:
 		return analyzeTerm(m, expr)
-	case syntax.Inverse:
-		return analyzeInverse(m, expr)
-	case syntax.Join:
-		return analyzeJoin(m, expr)
-	case syntax.Intersection:
-		return analyzeIntersection(m, expr)
-	case syntax.Union:
-		return analyzeUnion(m, expr)
+	case syntax.Op:
+		return analyzeOp(m, expr)
 	}
 	panic("unreachable")
 }
@@ -32,6 +26,20 @@ func analyzeValue(m Model, expr syntax.Tree) (Path, error) {
 
 func analyzeTerm(m Model, expr syntax.Tree) (Path, error) {
 	return m.Lookup(expr.Value)
+}
+
+func analyzeOp(m Model, expr syntax.Tree) (Path, error) {
+	switch expr.Value {
+	case "inverse":
+		return analyzeInverse(m, expr)
+	case "union":
+		return analyzeUnion(m, expr)
+	case "intersection":
+		return analyzeIntersection(m, expr)
+	case "join":
+		return analyzeJoin(m, expr)
+	}
+	return Path{}, ErrUnknown
 }
 
 func analyzeInverse(m Model, expr syntax.Tree) (Path, error) {

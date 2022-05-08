@@ -2,40 +2,84 @@ package syntax
 
 import (
 	"errors"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func leaf(kind Kind, value string) Tree {
-	return Tree{Kind: kind, Value: value}
-}
-
-func branch(kind Kind, children ...Tree) Tree {
-	return Tree{Kind: kind, Children: children}
-}
-
 func TestExpr(t *testing.T) {
-	e := `a/(~name|boom)&"hello"/123`
-	n, err := Parse(strings.NewReader(e))
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-	expected := branch(Intersection,
-		branch(Join,
-			leaf(Term, "a"),
-			branch(Union,
-				branch(Inverse, leaf(Term, "name")),
-				leaf(Term, "boom"),
-			),
-		),
-		branch(Join,
-			leaf(String, `"hello"`),
-			leaf(Integer, "123"),
-		),
-	)
-	if !reflect.DeepEqual(n, expected) {
-		t.Errorf("%v != %v", n, expected)
+	for _, test := range []struct {
+		name string
+		expr string
+		tree Tree
+	}{
+		{
+			name: "String",
+			expr: `"a"`,
+			tree: Tree{Kind: String, Value: `"a"`},
+		},
+		{
+			name: "Integer",
+			expr: "12",
+			tree: Tree{Kind: Integer, Value: "12"},
+		},
+		{
+			name: "NamedElement",
+			expr: "a",
+			tree: Tree{Kind: Rel, Value: "a"},
+		},
+		{
+			name: "NamedOp",
+			expr: "a()",
+			tree: Tree{Kind: Op, Value: "a"},
+		},
+		{
+			name: "NamedOpArgs",
+			expr: "a(1,2)",
+			tree: Tree{Kind: Op, Value: "a", Children: []Tree{
+				{Kind: Integer, Value: "1"},
+				{Kind: Integer, Value: "2"},
+			}},
+		},
+		{
+			name: "Inv",
+			expr: "~a",
+			tree: Tree{Kind: Op, Value: "inverse", Children: []Tree{
+				{Kind: Rel, Value: "a"},
+			}},
+		},
+		{
+			name: "Union",
+			expr: "a|b",
+			tree: Tree{Kind: Op, Value: "union", Children: []Tree{
+				{Kind: Rel, Value: "a"},
+				{Kind: Rel, Value: "b"},
+			}},
+		},
+		{
+			name: "Intersection",
+			expr: "a&b",
+			tree: Tree{Kind: Op, Value: "intersection", Children: []Tree{
+				{Kind: Rel, Value: "a"},
+				{Kind: Rel, Value: "b"},
+			}},
+		},
+		{
+			name: "Join",
+			expr: "a/b",
+			tree: Tree{Kind: Op, Value: "join", Children: []Tree{
+				{Kind: Rel, Value: "a"},
+				{Kind: Rel, Value: "b"},
+			}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			parsed, err := Parse(strings.NewReader(test.expr))
+			require.Nil(t, err)
+			assert.Equal(t, test.tree, parsed)
+		})
 	}
 }
 

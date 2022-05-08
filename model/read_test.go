@@ -32,7 +32,7 @@ entity_type {
 				{Name: "y", Type: IntegerID},
 			},
 			Relationships: Relationships{
-				{Name: "self", Impl: syntax.Tree{Kind: syntax.Term, Value: "a"}},
+				{Name: "self", Impl: syntax.Tree{Kind: syntax.Rel, Value: "a"}},
 			},
 		}},
 	}, m)

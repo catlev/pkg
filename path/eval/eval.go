@@ -13,7 +13,7 @@ type Host struct {
 }
 
 func NewHost(m *model.EntityModel, s Store) *Host {
-	c := NewCompiler(m)
+	c := NewCompiler(m, StandardOps)
 	return &Host{
 		model: m,
 		store: s,

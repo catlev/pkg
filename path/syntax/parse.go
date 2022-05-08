@@ -10,15 +10,6 @@ import (
 	"unsafe"
 )
 
-// Must asserts that a call to Parse or ParseString failing is a programming
-// error and so panics in that situation.
-func Must(t Tree, err error) Tree {
-	if err != nil {
-		panic(err)
-	}
-	return t
-}
-
 // ParseString parses a string into a Tree.
 func ParseString(s string) (Tree, error) {
 	return Parse(strings.NewReader(s))
@@ -46,7 +37,6 @@ type parser struct {
 	s      scanner.Scanner
 	tok    rune
 	cached bool
-	data   Tree
 	err    error
 }
 
@@ -84,9 +74,9 @@ func (p *parser) prefix() Tree {
 		return p.leaf(Integer, start, end)
 	case scanner.Ident, '*':
 		start, end := p.pos()
-		return p.leaf(Term, start, end)
+		return p.leaf(Rel, start, end)
 	case '~':
-		return p.branch(Inverse, p.parse(100))
+		return p.branch(Op, "inverse", p.parse(100))
 	case '(':
 		path := p.parse(0)
 		if p.next() != ')' {
@@ -100,30 +90,49 @@ func (p *parser) prefix() Tree {
 
 // Infix parsing productions.
 var infixes = [256]struct {
-	kind         Kind
+	op           string
 	outer, inner int
 }{
-	'/': {Join, 80, 80},
-	'&': {Intersection, 70, 70},
-	'|': {Union, 60, 60},
+	'/': {"join", 80, 80},
+	'&': {"intersection", 70, 70},
+	'|': {"union", 60, 60},
 }
 
 // Parse an expression in infix position.
 func (p *parser) infix(prec int, left Tree) Tree {
-	var kind Kind
+	var op string
 	var outer, inner int
 	c := p.peek()
+	if c == '(' {
+		p.next()
+		return p.namedOperation(left.Value)
+	}
 	if c >= 0 && c < 256 {
 		inf := infixes[c]
-		kind = inf.kind
+		op = inf.op
 		outer = inf.outer
 		inner = inf.inner
 	}
-	if p.err != nil || kind == String || prec >= outer {
+	if p.err != nil || op == "" || prec >= outer {
 		return Tree{}
 	}
 	p.next()
-	return p.branch(kind, left, p.parse(inner))
+	return p.branch(Op, op, left, p.parse(inner))
+}
+
+func (p *parser) namedOperation(name string) Tree {
+	res := Tree{Kind: Op, Value: name}
+	for {
+		c := p.peek()
+		if c == ')' {
+			p.next()
+			return res
+		}
+		if c == ',' && len(res.Children) > 0 {
+			p.next()
+		}
+		res.Children = append(res.Children, p.prefix())
+	}
 }
 
 // Look at the next token without advancing position.
@@ -156,8 +165,8 @@ func (p *parser) leaf(kind Kind, start, end int) Tree {
 	return Tree{Kind: kind, Value: p.value(start, end)}
 }
 
-func (p *parser) branch(kind Kind, children ...Tree) Tree {
-	return Tree{Kind: kind, Children: children}
+func (p *parser) branch(kind Kind, name string, children ...Tree) Tree {
+	return Tree{Kind: kind, Value: name, Children: children}
 }
 
 func (p *parser) value(start, end int) string {

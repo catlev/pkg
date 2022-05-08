@@ -11,13 +11,20 @@ type testModel struct {
 	items map[string][]Alternative
 }
 
+func Must[T any](x T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return x
+}
+
 func (m *testModel) Lookup(name string) (Path, error) {
 	alts, ok := m.items[name]
 	if !ok {
 		return Path{}, ErrUnknown
 	}
 	return Path{
-		syntax.Must(syntax.ParseString(name)),
+		Must(syntax.ParseString(name)),
 		alts,
 	}, nil
 }
@@ -110,7 +117,7 @@ func TestAnalysis(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			m := &testModel{test.setting}
-			p, err := Analyze(m, syntax.Must(syntax.ParseString(test.path)))
+			p, err := Analyze(m, Must(syntax.ParseString(test.path)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -149,7 +156,7 @@ func TestError(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Analyze(m, syntax.Must(syntax.ParseString(test.path)))
+			_, err := Analyze(m, Must(syntax.ParseString(test.path)))
 			if err == nil {
 				t.Error("expecting error")
 			}

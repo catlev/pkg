@@ -1,12 +1,13 @@
 package types
 
 import (
-	"github.com/catlev/pkg/path/syntax"
 	"sort"
+
+	"github.com/catlev/pkg/path"
 )
 
 type Path struct {
-	Expr         syntax.Tree
+	Expr         path.Expr
 	Alternatives []Alternative
 }
 

@@ -37,7 +37,7 @@ func TestCompile(t *testing.T) {
 	p, err := c.Compile(s)
 	require.Nil(t, err)
 	assert.Equal(t, &unionPath{
-		left: &valuePath{valueID: model.IntegerID, value: "123"},
+		left: &intPath{valueID: model.IntegerID, value: 123},
 		right: &intersectionPath{
 			left: &joinPath{
 				left: &attrFilter{

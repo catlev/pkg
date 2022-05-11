@@ -2,24 +2,30 @@ package syntax
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
 	"text/scanner"
 	"unsafe"
+
+	"github.com/catlev/pkg/path"
 )
 
-// ParseString parses a string into a Tree.
-func ParseString(s string) (Tree, error) {
+// ErrFailedToMatch indicates that there is a syntax error in the path.
+var ErrFailedToMatch = errors.New("failed to parse path")
+
+// ParseString parses a string into a path.Expr.
+func ParseString(s string) (path.Expr, error) {
 	return Parse(strings.NewReader(s))
 }
 
-// Parse parses a Reader into a Tree.
-func Parse(r io.Reader) (Tree, error) {
+// Parse parses a Reader into a path.Expr.
+func Parse(r io.Reader) (path.Expr, error) {
 	buf, err := ioutil.ReadAll(r)
 	if err != nil {
-		return Tree{}, err
+		return path.Expr{}, err
 	}
 	s := new(scanner.Scanner).Init(bytes.NewReader(buf))
 	p := parser{buf: buf, s: *s}
@@ -48,14 +54,14 @@ func (p *parser) setErr(err error) {
 }
 
 // Parse an expression at a particular precedence level.
-func (p *parser) parse(prec int) Tree {
+func (p *parser) parse(prec int) path.Expr {
 	left := p.prefix()
 	for {
 		if p.err != nil || p.tok == scanner.EOF {
 			break
 		}
 		right := p.infix(prec, left)
-		if right.Kind == Invalid {
+		if right.Kind == path.Invalid {
 			break
 		}
 		left = right
@@ -64,19 +70,19 @@ func (p *parser) parse(prec int) Tree {
 }
 
 // Parse an expression in prefix position.
-func (p *parser) prefix() Tree {
+func (p *parser) prefix() path.Expr {
 	switch p.next() {
 	case scanner.String:
 		start, end := p.pos()
-		return p.leaf(String, start, end)
+		return p.leaf(path.String, start, end)
 	case scanner.Int:
 		start, end := p.pos()
-		return p.leaf(Integer, start, end)
+		return p.leaf(path.Integer, start, end)
 	case scanner.Ident, '*':
 		start, end := p.pos()
-		return p.leaf(Rel, start, end)
+		return p.leaf(path.Rel, start, end)
 	case '~':
-		return p.branch(Op, "inverse", p.parse(100))
+		return p.branch(path.Op, "inverse", p.parse(100))
 	case '(':
 		path := p.parse(0)
 		if p.next() != ')' {
@@ -85,7 +91,7 @@ func (p *parser) prefix() Tree {
 		return path
 	}
 	p.setErr(ErrFailedToMatch)
-	return Tree{}
+	return path.Expr{}
 }
 
 // Infix parsing productions.
@@ -99,7 +105,7 @@ var infixes = [256]struct {
 }
 
 // Parse an expression in infix position.
-func (p *parser) infix(prec int, left Tree) Tree {
+func (p *parser) infix(prec int, left path.Expr) path.Expr {
 	var op string
 	var outer, inner int
 	c := p.peek()
@@ -114,14 +120,14 @@ func (p *parser) infix(prec int, left Tree) Tree {
 		inner = inf.inner
 	}
 	if p.err != nil || op == "" || prec >= outer {
-		return Tree{}
+		return path.Expr{}
 	}
 	p.next()
-	return p.branch(Op, op, left, p.parse(inner))
+	return p.branch(path.Op, op, left, p.parse(inner))
 }
 
-func (p *parser) namedOperation(name string) Tree {
-	res := Tree{Kind: Op, Value: name}
+func (p *parser) namedOperation(name string) path.Expr {
+	res := path.Expr{Kind: path.Op, Value: name}
 	for {
 		c := p.peek()
 		if c == ')' {
@@ -161,12 +167,12 @@ func (p *parser) pos() (int, int) {
 	return off - len(p.s.TokenText()), off
 }
 
-func (p *parser) leaf(kind Kind, start, end int) Tree {
-	return Tree{Kind: kind, Value: p.value(start, end)}
+func (p *parser) leaf(kind path.Kind, start, end int) path.Expr {
+	return path.Expr{Kind: kind, Value: p.value(start, end)}
 }
 
-func (p *parser) branch(kind Kind, name string, children ...Tree) Tree {
-	return Tree{Kind: kind, Value: name, Children: children}
+func (p *parser) branch(kind path.Kind, name string, children ...path.Expr) path.Expr {
+	return path.Expr{Kind: kind, Value: name, Children: children}
 }
 
 func (p *parser) value(start, end int) string {

@@ -26,7 +26,7 @@ func (h *Host) Absolute() Box {
 	return Box{
 		model: h.model,
 		store: h.store,
-		arms: []arm{{
+		contents: []Query{{
 			entityID: model.AbsoluteID,
 		}},
 	}

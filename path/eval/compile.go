@@ -4,7 +4,8 @@ import (
 	"errors"
 
 	"github.com/catlev/pkg/model"
-	"github.com/catlev/pkg/path/syntax"
+	"github.com/catlev/pkg/path"
+	"github.com/catlev/pkg/store/block"
 )
 
 type Compiler struct {
@@ -39,53 +40,49 @@ var (
 	ErrUnknownOp         = errors.New("unknown op")
 )
 
-func (c *Compiler) Compile(tree syntax.Tree) (Arrow, error) {
-	switch tree.Kind {
-	case syntax.Integer:
-		return &valuePath{
-			valueID: model.IntegerID,
-			value:   tree.Value,
-		}, nil
-
-	case syntax.Rel:
-		return c.compileTerm(tree.Value)
-
-	case syntax.Op:
-		op := c.ops[tree.Value]
-		if op == nil {
-			return nil, ErrUnknownOp
-		}
-		args := make([]Arrow, len(tree.Children))
-		for i, p := range tree.Children {
-			a, err := c.Compile(p)
-			if err != nil {
-				return nil, err
-			}
-			args[i] = a
-		}
-		return op(args)
-	}
-	return nil, ErrUnsupportedSyntax
+func (c *Compiler) Compile(tree path.Expr) (Arrow, error) {
+	return path.Visit[Arrow](&compileVisitor{*c}, tree)
 }
 
-func (c *Compiler) compileTerm(name string) (Arrow, error) {
+type compileVisitor struct {
+	Compiler
+}
+
+func success[T any](x T) (T, error) {
+	return x, nil
+}
+
+func (v *compileVisitor) String(x string) (Arrow, error) {
+	return success(&stringPath{
+		valueID: model.StringID,
+		value:   x,
+	})
+}
+
+func (v *compileVisitor) Integer(x int) (Arrow, error) {
+	return success(&intPath{
+		valueID: model.IntegerID,
+		value:   block.Word(x),
+	})
+}
+
+func (v *compileVisitor) Rel(name string) (Arrow, error) {
 	var res Arrow
 
-	for _, t := range c.model.Types {
+	for _, t := range v.model.Types {
 		if t.Name == name {
 			res = addOption(res, &entityPath{
 				entityID: t.ID,
 			})
 		}
 		for i, c := range t.Attributes {
-			if c.Name != name {
-				continue
+			if c.Name == name {
+				res = addOption(res, &attrPath{
+					entityID: t.ID,
+					valueID:  c.Type,
+					column:   i,
+				})
 			}
-			res = addOption(res, &attrPath{
-				entityID: t.ID,
-				valueID:  c.Type,
-				column:   i,
-			})
 		}
 	}
 
@@ -94,6 +91,15 @@ func (c *Compiler) compileTerm(name string) (Arrow, error) {
 	}
 
 	return res, nil
+
+}
+
+func (v *compileVisitor) Op(name string, args []Arrow) (Arrow, error) {
+	op := v.ops[name]
+	if op == nil {
+		return nil, ErrUnknownOp
+	}
+	return op(args)
 }
 
 func addOption(left, right Arrow) Arrow {

@@ -93,7 +93,7 @@ func (p *attrPath) Follow(xs Box) Box {
 	for _, a := range xs.findAll(p.entityID) {
 		c := xs.runQuery(a)
 		for c.Next() {
-			res.arms = append(res.arms, arm{
+			res.contents = append(res.contents, Query{
 				entityID: p.valueID,
 				mask:     1,
 				where:    []block.Word{c.This().Fields[p.column]},
@@ -131,7 +131,7 @@ func (p *attrFilter) Follow(xs Box) Box {
 		where := make([]block.Word, len(xs.model.Types[p.entityID].Attributes))
 		where[p.column] = a.where[0]
 
-		res.arms = append(res.arms, arm{
+		res.contents = append(res.contents, Query{
 			entityID: p.entityID,
 			mask:     1 << p.column,
 			where:    where,
@@ -149,12 +149,71 @@ func (p *attrFilter) Reverse() Arrow {
 	}
 }
 
-type valuePath struct {
+type intPath struct {
+	valueID block.Word
+	value   block.Word
+}
+
+func (p *intPath) Follow(xs Box) Box {
+	if xs.err != nil {
+		return Box{err: xs.err}
+	}
+
+	res := Box{
+		store: xs.store,
+		model: xs.model,
+	}
+	if len(xs.findAll(model.AbsoluteID)) != 0 {
+		res.contents = append(res.contents, Query{
+			entityID: p.valueID,
+			mask:     1,
+			where:    []block.Word{p.value},
+		})
+	}
+
+	return res
+}
+
+func (p *intPath) Reverse() Arrow {
+	return &intFilter{p.valueID, p.value}
+}
+
+type intFilter struct {
+	valueID block.Word
+	value   block.Word
+}
+
+func (p *intFilter) Follow(xs Box) Box {
+	if xs.err != nil {
+		return Box{err: xs.err}
+	}
+
+	res := Box{
+		store: xs.store,
+		model: xs.model,
+	}
+	vs := xs.findAll(p.valueID)
+	if idx := sort.Search(len(vs), func(i int) bool {
+		return vs[i].where[0] >= p.value
+	}); idx == len(vs) || vs[idx].where[0] != p.value {
+		return res
+	}
+	res.contents = append(res.contents, Query{
+		entityID: model.AbsoluteID,
+	})
+	return res
+}
+
+func (p *intFilter) Reverse() Arrow {
+	return &intPath{p.valueID, p.value}
+}
+
+type stringPath struct {
 	valueID block.Word
 	value   string
 }
 
-func (p *valuePath) Follow(xs Box) Box {
+func (p *stringPath) Follow(xs Box) Box {
 	if xs.err != nil {
 		return Box{err: xs.err}
 	}
@@ -168,7 +227,7 @@ func (p *valuePath) Follow(xs Box) Box {
 		model: xs.model,
 	}
 	if len(xs.findAll(model.AbsoluteID)) != 0 {
-		res.arms = append(res.arms, arm{
+		res.contents = append(res.contents, Query{
 			entityID: p.valueID,
 			mask:     1,
 			where:    []block.Word{value},
@@ -177,19 +236,19 @@ func (p *valuePath) Follow(xs Box) Box {
 	return res
 }
 
-func (p *valuePath) Reverse() Arrow {
-	return &valueFilter{
+func (p *stringPath) Reverse() Arrow {
+	return &stringFilter{
 		valueID: p.valueID,
 		value:   p.value,
 	}
 }
 
-type valueFilter struct {
+type stringFilter struct {
 	valueID block.Word
 	value   string
 }
 
-func (p *valueFilter) Follow(xs Box) Box {
+func (p *stringFilter) Follow(xs Box) Box {
 	if xs.err != nil {
 		return Box{err: xs.err}
 	}
@@ -208,14 +267,14 @@ func (p *valueFilter) Follow(xs Box) Box {
 	}); idx == len(vs) || vs[idx].where[0] != value {
 		return res
 	}
-	res.arms = append(res.arms, arm{
+	res.contents = append(res.contents, Query{
 		entityID: model.AbsoluteID,
 	})
 	return res
 }
 
-func (p *valueFilter) Reverse() Arrow {
-	return &valuePath{
+func (p *stringFilter) Reverse() Arrow {
+	return &stringPath{
 		valueID: p.valueID,
 		value:   p.value,
 	}
@@ -235,7 +294,7 @@ func (p *entityPath) Follow(xs Box) Box {
 		model: xs.model,
 	}
 	if len(xs.findAll(model.AbsoluteID)) != 0 {
-		res.arms = append(res.arms, arm{
+		res.contents = append(res.contents, Query{
 			entityID: p.entityID,
 			where:    make([]block.Word, len(xs.model.Types[p.entityID].Attributes)),
 		})
@@ -263,7 +322,7 @@ func (p *entityFilter) Follow(xs Box) Box {
 		model: xs.model,
 	}
 	if len(xs.findAll(p.entityID)) != 0 {
-		res.arms = append(res.arms, arm{
+		res.contents = append(res.contents, Query{
 			entityID: model.AbsoluteID,
 		})
 	}

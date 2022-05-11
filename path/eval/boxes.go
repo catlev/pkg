@@ -17,128 +17,17 @@ type Object struct {
 	Fields   []block.Word
 }
 
-type Cursor interface {
-	Next() bool
-	This() Object
-	Err() error
-}
-
 type Box struct {
-	store Store
-	model *model.EntityModel
-	arms  []arm
-	err   error
+	store    Store
+	model    *model.EntityModel
+	contents []Query
+	err      error
 }
 
-type arm struct {
+type Query struct {
 	entityID block.Word
 	mask     uint64
 	where    []block.Word
-}
-
-type errCursor struct {
-	err error
-}
-
-func (c *errCursor) Err() error {
-	return c.err
-}
-
-func (*errCursor) Next() bool {
-	return false
-}
-
-func (*errCursor) This() Object {
-	panic("unimplemented")
-}
-
-type whereCursor struct {
-	base Cursor
-	arm  arm
-}
-
-func (c *whereCursor) Err() error {
-	return c.base.Err()
-}
-
-func (c *whereCursor) Next() bool {
-	for {
-		if !c.base.Next() {
-			return false
-		}
-		o := c.base.This()
-		if o.EntityID != c.arm.entityID {
-			return false
-		}
-		if c.rowMatches(o) {
-			return true
-		}
-	}
-}
-
-func (c *whereCursor) rowMatches(o Object) bool {
-	for i, p := range c.arm.where {
-		if !c.arm.constrains(i) {
-			continue
-		}
-		if o.Fields[i] != p {
-			return false
-		}
-	}
-	return true
-}
-
-func (c *whereCursor) This() Object {
-	return c.base.This()
-}
-
-type valueCursor struct {
-	arm arm
-	pos int
-}
-
-func (c *valueCursor) Err() error {
-	return nil
-}
-
-func (c *valueCursor) Next() bool {
-	c.pos++
-	return c.pos < len(c.arm.where)
-}
-
-func (c *valueCursor) This() Object {
-	return Object{
-		EntityID: c.arm.entityID,
-		Fields:   []block.Word{c.arm.where[0]},
-	}
-}
-
-type boxCursor struct {
-	cur Cursor
-	arm int
-	box Box
-}
-
-// Err implements Cursor
-func (c *boxCursor) Err() error {
-	return c.cur.Err()
-}
-
-// Next implements Cursor
-func (c *boxCursor) Next() bool {
-	for !c.cur.Next() {
-		c.arm++
-		if c.arm >= len(c.box.arms) {
-			return false
-		}
-		c.cur = c.box.runQuery(c.box.arms[c.arm])
-	}
-	return true
-}
-
-// This implements Cursor
-func (c *boxCursor) This() Object {
-	return c.cur.This()
 }
 
 func (s Box) Enumerate() Cursor {
@@ -158,13 +47,13 @@ func (s Box) Union(t Box) Box {
 	}
 
 	res := Box{
-		store: s.store,
-		model: s.model,
-		arms:  make([]arm, len(s.arms)+len(t.arms)),
+		store:    s.store,
+		model:    s.model,
+		contents: make([]Query, len(s.contents)+len(t.contents)),
 	}
 
-	copy(res.arms, s.arms)
-	copy(res.arms[len(s.arms):], t.arms)
+	copy(res.contents, s.contents)
+	copy(res.contents[len(s.contents):], t.contents)
 	res.simplify()
 
 	return res
@@ -180,13 +69,13 @@ func (s Box) Intersection(t Box) Box {
 		model: s.model,
 	}
 
-	if len(s.arms) == 0 {
+	if len(s.contents) == 0 {
 		return res
 	}
 
-	var bs []arm
+	var bs []Query
 
-	for _, a := range s.arms {
+	for _, a := range s.contents {
 		if len(bs) == 0 || bs[0].entityID != a.entityID {
 			bs = t.findAll(a.entityID)
 		}
@@ -196,7 +85,7 @@ func (s Box) Intersection(t Box) Box {
 		for _, b := range bs {
 			merged, ok := a.merge(b)
 			if ok {
-				res.arms = append(res.arms, merged)
+				res.contents = append(res.contents, merged)
 			}
 		}
 	}
@@ -205,17 +94,17 @@ func (s Box) Intersection(t Box) Box {
 	return res
 }
 
-func (s Box) findAll(entityID block.Word) []arm {
-	start := sort.Search(len(s.arms), func(i int) bool {
-		return s.arms[i].entityID >= entityID
+func (s Box) findAll(entityID block.Word) []Query {
+	start := sort.Search(len(s.contents), func(i int) bool {
+		return s.contents[i].entityID >= entityID
 	})
-	end := sort.Search(len(s.arms), func(i int) bool {
-		return s.arms[i].entityID > entityID
+	end := sort.Search(len(s.contents), func(i int) bool {
+		return s.contents[i].entityID > entityID
 	})
-	return s.arms[start:end]
+	return s.contents[start:end]
 }
 
-func (s Box) runQuery(a arm) Cursor {
+func (s Box) runQuery(a Query) Cursor {
 	if s.model.Types[a.entityID].Kind == model.Value {
 		return &valueCursor{
 			arm: a,
@@ -229,7 +118,7 @@ func (s Box) runQuery(a arm) Cursor {
 	}
 }
 
-func (s Box) buildKey(a arm) []block.Word {
+func (s Box) buildKey(a Query) []block.Word {
 	t := s.model.Types[a.entityID]
 	var key []block.Word
 	for i, c := range t.Attributes {
@@ -245,20 +134,20 @@ func (s Box) buildKey(a arm) []block.Word {
 }
 
 func (s *Box) simplify() {
-	sort.Slice(s.arms, func(i, j int) bool {
-		a := s.arms[i]
-		b := s.arms[j]
+	sort.Slice(s.contents, func(i, j int) bool {
+		a := s.contents[i]
+		b := s.contents[j]
 
 		return a.before(b)
 	})
 
-	dupMap := make([]bool, len(s.arms))
+	dupMap := make([]bool, len(s.contents))
 	dupsExist := false
-	for i, a := range s.arms {
+	for i, a := range s.contents {
 		if dupMap[i] {
 			continue
 		}
-		for j, b := range s.arms[i+1:] {
+		for j, b := range s.contents[i+1:] {
 			j += i + 1
 			if a.entityID != b.entityID {
 				break
@@ -276,20 +165,20 @@ func (s *Box) simplify() {
 	if !dupsExist {
 		return
 	}
-	var arms []arm
-	for i, a := range s.arms {
+	var arms []Query
+	for i, a := range s.contents {
 		if !dupMap[i] {
 			arms = append(arms, a)
 		}
 	}
-	s.arms = arms
+	s.contents = arms
 }
 
-func (a arm) constrains(column int) bool {
+func (a Query) constrains(column int) bool {
 	return a.mask&(1<<column) != 0
 }
 
-func (a arm) supersetOf(b arm) bool {
+func (a Query) supersetOf(b Query) bool {
 	if a.entityID != b.entityID {
 		return false
 	}
@@ -308,7 +197,7 @@ func (a arm) supersetOf(b arm) bool {
 	return true
 }
 
-func (a arm) before(b arm) bool {
+func (a Query) before(b Query) bool {
 	if a.entityID != b.entityID {
 		return a.entityID < b.entityID
 	}
@@ -327,9 +216,9 @@ func (a arm) before(b arm) bool {
 	return false
 }
 
-func (a arm) merge(b arm) (arm, bool) {
+func (a Query) merge(b Query) (Query, bool) {
 	if a.entityID != b.entityID {
-		return arm{}, false
+		return Query{}, false
 	}
 	res := make([]block.Word, len(a.where))
 	for i, p := range a.where {
@@ -346,7 +235,7 @@ func (a arm) merge(b arm) (arm, bool) {
 			res[i] = p
 			continue
 		}
-		return arm{}, false
+		return Query{}, false
 	}
-	return arm{a.entityID, a.mask | b.mask, res}, true
+	return Query{a.entityID, a.mask | b.mask, res}, true
 }

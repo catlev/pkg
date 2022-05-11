@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/catlev/pkg/path/syntax"
+	"github.com/catlev/pkg/path"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ entity_type {
 				{Name: "y", Type: IntegerID},
 			},
 			Relationships: Relationships{
-				{Name: "self", Impl: syntax.Tree{Kind: syntax.Rel, Value: "a"}},
+				{Name: "self", Impl: path.Expr{Kind: path.Rel, Value: "a"}},
 			},
 		}},
 	}, m)

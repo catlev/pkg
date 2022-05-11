@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/catlev/pkg/path"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,65 +14,65 @@ func TestExpr(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		expr string
-		tree Tree
+		tree path.Expr
 	}{
 		{
 			name: "String",
 			expr: `"a"`,
-			tree: Tree{Kind: String, Value: `"a"`},
+			tree: path.Expr{Kind: path.String, Value: `"a"`},
 		},
 		{
 			name: "Integer",
 			expr: "12",
-			tree: Tree{Kind: Integer, Value: "12"},
+			tree: path.Expr{Kind: path.Integer, Value: "12"},
 		},
 		{
 			name: "NamedElement",
 			expr: "a",
-			tree: Tree{Kind: Rel, Value: "a"},
+			tree: path.Expr{Kind: path.Rel, Value: "a"},
 		},
 		{
-			name: "NamedOp",
+			name: "Namedpath.Op",
 			expr: "a()",
-			tree: Tree{Kind: Op, Value: "a"},
+			tree: path.Expr{Kind: path.Op, Value: "a"},
 		},
 		{
-			name: "NamedOpArgs",
+			name: "Namedpath.OpArgs",
 			expr: "a(1,2)",
-			tree: Tree{Kind: Op, Value: "a", Children: []Tree{
-				{Kind: Integer, Value: "1"},
-				{Kind: Integer, Value: "2"},
+			tree: path.Expr{Kind: path.Op, Value: "a", Children: []path.Expr{
+				{Kind: path.Integer, Value: "1"},
+				{Kind: path.Integer, Value: "2"},
 			}},
 		},
 		{
 			name: "Inv",
 			expr: "~a",
-			tree: Tree{Kind: Op, Value: "inverse", Children: []Tree{
-				{Kind: Rel, Value: "a"},
+			tree: path.Expr{Kind: path.Op, Value: "inverse", Children: []path.Expr{
+				{Kind: path.Rel, Value: "a"},
 			}},
 		},
 		{
 			name: "Union",
 			expr: "a|b",
-			tree: Tree{Kind: Op, Value: "union", Children: []Tree{
-				{Kind: Rel, Value: "a"},
-				{Kind: Rel, Value: "b"},
+			tree: path.Expr{Kind: path.Op, Value: "union", Children: []path.Expr{
+				{Kind: path.Rel, Value: "a"},
+				{Kind: path.Rel, Value: "b"},
 			}},
 		},
 		{
 			name: "Intersection",
 			expr: "a&b",
-			tree: Tree{Kind: Op, Value: "intersection", Children: []Tree{
-				{Kind: Rel, Value: "a"},
-				{Kind: Rel, Value: "b"},
+			tree: path.Expr{Kind: path.Op, Value: "intersection", Children: []path.Expr{
+				{Kind: path.Rel, Value: "a"},
+				{Kind: path.Rel, Value: "b"},
 			}},
 		},
 		{
 			name: "Join",
 			expr: "a/b",
-			tree: Tree{Kind: Op, Value: "join", Children: []Tree{
-				{Kind: Rel, Value: "a"},
-				{Kind: Rel, Value: "b"},
+			tree: path.Expr{Kind: path.Op, Value: "join", Children: []path.Expr{
+				{Kind: path.Rel, Value: "a"},
+				{Kind: path.Rel, Value: "b"},
 			}},
 		},
 	} {

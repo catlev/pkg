@@ -3,32 +3,32 @@ package types
 import (
 	"errors"
 
-	"github.com/catlev/pkg/path/syntax"
+	"github.com/catlev/pkg/path"
 )
 
 var ErrUnknown = errors.New("unknown path expression")
 
-func Analyze(m Model, expr syntax.Tree) (Path, error) {
+func Analyze(m Model, expr path.Expr) (Path, error) {
 	switch expr.Kind {
-	case syntax.Integer:
+	case path.Integer:
 		return analyzeValue(m, expr)
-	case syntax.Rel:
+	case path.Rel:
 		return analyzeTerm(m, expr)
-	case syntax.Op:
+	case path.Op:
 		return analyzeOp(m, expr)
 	}
 	panic("unreachable")
 }
 
-func analyzeValue(m Model, expr syntax.Tree) (Path, error) {
+func analyzeValue(m Model, expr path.Expr) (Path, error) {
 	return Path{expr, []Alternative{{absoluteType, attributeType}}}, nil
 }
 
-func analyzeTerm(m Model, expr syntax.Tree) (Path, error) {
+func analyzeTerm(m Model, expr path.Expr) (Path, error) {
 	return m.Lookup(expr.Value)
 }
 
-func analyzeOp(m Model, expr syntax.Tree) (Path, error) {
+func analyzeOp(m Model, expr path.Expr) (Path, error) {
 	switch expr.Value {
 	case "inverse":
 		return analyzeInverse(m, expr)
@@ -42,7 +42,7 @@ func analyzeOp(m Model, expr syntax.Tree) (Path, error) {
 	return Path{}, ErrUnknown
 }
 
-func analyzeInverse(m Model, expr syntax.Tree) (Path, error) {
+func analyzeInverse(m Model, expr path.Expr) (Path, error) {
 	path, err := Analyze(m, expr.Children[0])
 	if err != nil {
 		return Path{}, err
@@ -59,7 +59,7 @@ func analyzeInverse(m Model, expr syntax.Tree) (Path, error) {
 	return path, nil
 }
 
-func analyzeJoin(m Model, expr syntax.Tree) (Path, error) {
+func analyzeJoin(m Model, expr path.Expr) (Path, error) {
 	return analyzeComposition(m, expr, func(left, right Path) []Alternative {
 		var alts []Alternative
 		for _, a := range left.Alternatives {
@@ -74,7 +74,7 @@ func analyzeJoin(m Model, expr syntax.Tree) (Path, error) {
 	})
 }
 
-func analyzeIntersection(m Model, expr syntax.Tree) (Path, error) {
+func analyzeIntersection(m Model, expr path.Expr) (Path, error) {
 	return analyzeComposition(m, expr, func(left, right Path) []Alternative {
 		var alts []Alternative
 		for _, a := range left.Alternatives {
@@ -89,7 +89,7 @@ func analyzeIntersection(m Model, expr syntax.Tree) (Path, error) {
 	})
 }
 
-func analyzeUnion(m Model, expr syntax.Tree) (Path, error) {
+func analyzeUnion(m Model, expr path.Expr) (Path, error) {
 	return analyzeComposition(m, expr, func(left, right Path) []Alternative {
 		var alts []Alternative
 		alts = append(alts, left.Alternatives...)
@@ -98,7 +98,7 @@ func analyzeUnion(m Model, expr syntax.Tree) (Path, error) {
 	})
 }
 
-func analyzeComposition(m Model, expr syntax.Tree, f func(left, right Path) []Alternative) (Path, error) {
+func analyzeComposition(m Model, expr path.Expr, f func(left, right Path) []Alternative) (Path, error) {
 	left, err := Analyze(m, expr.Children[0])
 	if err != nil {
 		return Path{}, err

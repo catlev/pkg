@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/catlev/pkg/path"
 	"github.com/catlev/pkg/path/syntax"
 	"github.com/catlev/pkg/store/block"
 	"github.com/catlev/pkg/stream"
@@ -44,12 +45,13 @@ type Relationships []Relationship
 
 type Relationship struct {
 	Name string
-	Impl syntax.Tree
+	Impl path.Expr
 }
 
 const (
 	AbsoluteID block.Word = iota
 	IntegerID
+	StringID
 )
 
 var (
@@ -75,15 +77,19 @@ func Read(src io.Reader) (*EntityModel, error) {
 func (ts *Types) read(r *stream.Reader) error {
 	var t Type
 	for r.Next() {
+		var err error
 		switch r.Name() {
 		case "name":
 			t.Name = r.StringField()
 		case "attribute":
-			t.Attributes.read(r.Record())
+			err = t.Attributes.read(r.Record())
 		case "relationship":
-			t.Relationships.read(r.Record())
+			err = t.Relationships.read(r.Record())
 		default:
-			return fmt.Errorf("%s: %w", r.Name(), ErrUnknownElement)
+			err = fmt.Errorf("%s: %w", r.Name(), ErrUnknownElement)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	*ts = append(*ts, t)

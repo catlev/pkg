@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 	"text/scanner"
 	"unsafe"
@@ -23,7 +22,7 @@ func ParseString(s string) (path.Expr, error) {
 
 // Parse parses a Reader into a path.Expr.
 func Parse(r io.Reader) (path.Expr, error) {
-	buf, err := ioutil.ReadAll(r)
+	buf, err := io.ReadAll(r)
 	if err != nil {
 		return path.Expr{}, err
 	}
@@ -120,7 +119,7 @@ func (p *parser) infix(prec int, left path.Expr) path.Expr {
 		inner = inf.inner
 	}
 	if p.err != nil || op == "" || prec >= outer {
-		return path.Expr{}
+		return left
 	}
 	p.next()
 	return p.branch(path.Op, op, left, p.parse(inner))

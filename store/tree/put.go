@@ -1,20 +1,22 @@
 package tree
 
 import (
-	"errors"
-
 	"github.com/catlev/pkg/store/block"
 )
 
-var ErrBadRow = errors.New("bad row")
-
 // Put establishes an association between key and value. Errors may be relayed from the block store.
-func (t *Tree) Put(r row) error {
+func (t *Tree) Put(r row) (err error) {
 	if len(r) != t.columns {
-		return ErrBadRow
+		return &TreeError{
+			Err: ErrBadRow,
+			Op:  "Put",
+		}
 	}
+
 	key := make([]block.Word, len(t.key))
 	r.extractKey(t.key, key)
+
+	defer wrapErr(&err, "Put", key)
 
 	n, err := t.findNode(key)
 	if err != nil {
@@ -77,8 +79,7 @@ func (t *Tree) addNodeEntry(n *node, key []block.Word, r row) (*node, error) {
 }
 
 func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
-	midpoint := make([]block.Word, len(t.key))
-	n.keyFor(n.minWidth(), midpoint)
+	midpoint := n.getKey(n.minWidth())
 
 	newNode := &node{
 		columns: n.columns,

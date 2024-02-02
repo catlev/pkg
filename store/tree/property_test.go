@@ -1,3 +1,5 @@
+//go:build property
+
 package tree
 
 import (
@@ -8,7 +10,7 @@ import (
 	"github.com/catlev/pkg/store/block/mem"
 )
 
-func Disabled_TestTreeProperties(t *testing.T) {
+func TestTreeProperties(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
 	tree := New(3, []int{0}, store, 0, start)
@@ -36,7 +38,7 @@ func Disabled_TestTreeProperties(t *testing.T) {
 
 }
 
-func Disabled_TestWideTreeProperties(t *testing.T) {
+func TestWideTreeProperties(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
 	tree := New(4, []int{0, 1}, store, 0, start)

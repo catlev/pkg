@@ -1,22 +1,26 @@
 package tree
 
 import (
-	"fmt"
-
 	"github.com/catlev/pkg/store/block"
 )
 
 // Delete removes the association between the given key and its value. If no association exists,
 // ErrNotFound is returned. Errors may also originate from the block store.
-func (t *Tree) Delete(key []block.Word) error {
+func (t *Tree) Delete(key []block.Word) (err error) {
+	defer wrapErr(&err, "Delete", key)
+
+	if len(key) != len(t.key) {
+		return ErrKeyWidth
+	}
+
 	n, err := t.findNode(key)
 	if err != nil {
-		return fmt.Errorf("delete %d: %w", key, err)
+		return err
 	}
 
 	idx := n.probe(key)
 	if compareValues(n.getKey(idx), key) != 0 {
-		return fmt.Errorf("delete %d: %w", key, ErrNotFound)
+		return err
 	}
 
 	return t.deleteFromNode(n, idx)

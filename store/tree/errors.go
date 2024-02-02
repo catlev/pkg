@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	ErrNotFound  = errors.New("not found")
-	ErrNarrowKey = errors.New("not enough values in key")
+	ErrNotFound = errors.New("not found")
+	ErrBadRow   = errors.New("bad row")
+	ErrKeyWidth = errors.New("wrong number of values in key")
 )
 
 type TreeError struct {

@@ -119,7 +119,7 @@ func (p *parser) infix(prec int, left path.Expr) path.Expr {
 		inner = inf.inner
 	}
 	if p.err != nil || op == "" || prec >= outer {
-		return left
+		return path.Expr{}
 	}
 	p.next()
 	return p.branch(path.Op, op, left, p.parse(inner))

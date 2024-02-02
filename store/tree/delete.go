@@ -8,14 +8,14 @@ import (
 
 // Delete removes the association between the given key and its value. If no association exists,
 // ErrNotFound is returned. Errors may also originate from the block store.
-func (t *Tree) Delete(key block.Word) error {
+func (t *Tree) Delete(key []block.Word) error {
 	n, err := t.findNode(key)
 	if err != nil {
 		return fmt.Errorf("delete %d: %w", key, err)
 	}
 
 	idx := n.probe(key)
-	if n.keyFor(idx) != key {
+	if compareValues(n.getKey(idx), key) != 0 {
 		return fmt.Errorf("delete %d: %w", key, ErrNotFound)
 	}
 
@@ -31,7 +31,7 @@ func (t *Tree) deleteFromNode(n *node, idx int) error {
 		}
 		if n.width == 2 {
 			// superfluous root node
-			t.root = n.getRow((idx + 1) % 2)[valueField]
+			t.root = n.getRow((idx + 1) % 2)[len(t.key)]
 			t.depth--
 			return t.store.FreeBlock(n.id)
 		}
@@ -101,35 +101,35 @@ func (t *Tree) getSucc(n *node) (*node, error) {
 }
 
 func (t *Tree) borrowPre(n, pre *node) error {
-	midpoint := pre.keyFor(n.minWidth())
+	midpoint := pre.getKey(n.minWidth())
 
-	n.getRow(0)[keyField] = n.keyFor(0)
+	n.setkey(0, n.getKey(0))
 	n.insert(0, pre.getRows(n.minWidth(), pre.width)...)
-	n.getRow(0)[keyField] = 0
+	n.setkey(0, make([]block.Word, len(t.key)))
 
 	pre.clearRows(n.minWidth(), -1)
 
-	n.parent.getRow(n.pos)[keyField] = midpoint
+	n.parent.setkey(n.pos, midpoint)
 
 	return t.writeNodes(n, pre, n.parent)
 }
 
 func (t *Tree) borrowSucc(n, succ *node) error {
 	amt := succ.width - succ.minWidth()
-	midpoint := succ.keyFor(amt)
+	midpoint := succ.getKey(amt)
 
-	succ.getRow(0)[keyField] = succ.keyFor(0)
+	succ.setkey(0, succ.getKey(0))
 	n.insert(n.width, succ.getRows(0, amt)...)
 	succ.remove(0, amt)
-	succ.getRow(0)[keyField] = 0
+	succ.setkey(0, make([]block.Word, len(t.key)))
 
-	succ.parent.getRow(succ.pos)[keyField] = midpoint
+	succ.parent.setkey(succ.pos, midpoint)
 
 	return t.writeNodes(n, succ, succ.parent)
 }
 
 func (t *Tree) mergePre(n, pre *node) error {
-	n.getRow(0)[keyField] = n.keyFor(0)
+	n.setkey(0, n.getKey(0))
 	copy(pre.entries[pre.width*pre.columns:], n.entries[:])
 
 	err := t.writeNode(pre)
@@ -146,11 +146,11 @@ func (t *Tree) mergePre(n, pre *node) error {
 }
 
 func (t *Tree) mergeSucc(n, succ *node) error {
-	n.getRow(0)[keyField] = n.keyFor(0)
-	succ.getRow(0)[keyField] = succ.keyFor(0)
+	n.setkey(0, n.getKey(0))
+	succ.setkey(0, succ.getKey(0))
 	copy(succ.entries[n.width*n.columns:], succ.entries[:])
 	copy(succ.entries[:n.width*n.columns], n.entries[:])
-	n.getRow(0)[keyField] = 0
+	n.setkey(0, make([]block.Word, len(t.key)))
 
 	err := t.writeNode(succ)
 	if err != nil {

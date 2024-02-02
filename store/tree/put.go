@@ -9,11 +9,12 @@ import (
 var ErrBadRow = errors.New("bad row")
 
 // Put establishes an association between key and value. Errors may be relayed from the block store.
-func (t *Tree) Put(row []block.Word) error {
-	if len(row) != t.columns {
+func (t *Tree) Put(r row) error {
+	if len(r) != t.columns {
 		return ErrBadRow
 	}
-	key := row[t.key]
+	key := make([]block.Word, len(t.key))
+	r.extractKey(t.key, key)
 
 	n, err := t.findNode(key)
 	if err != nil {
@@ -22,30 +23,32 @@ func (t *Tree) Put(row []block.Word) error {
 
 	idx := n.probe(key)
 
-	if rowsEqual(n.getRow(idx), row) {
+	if compareValues(n.getRow(idx), r) == 0 {
 		// no update required
 		return nil
 	}
 
-	if n.keyFor(idx) == key {
+	if n.compareKeyAt(idx, key) == 0 {
 		// updating existing entry, no need to make room
-		copy(n.entries[idx*n.columns:], row)
+		copy(n.entries[idx*n.columns:], r)
 		return t.writeNode(n)
 	}
 
-	_, err = t.addNodeEntry(n, key, row)
+	_, err = t.addNodeEntry(n, key, r)
 	return err
 }
 
-func (t *Tree) addNodeEntry(n *node, key block.Word, row []block.Word) (*node, error) {
+func (t *Tree) addNodeEntry(n *node, key []block.Word, r row) (*node, error) {
 	var err error
 
 	if n == nil {
 		rootNode := &node{
-			columns: branchColumns,
-			key:     keyField,
-			entries: block.Block{0, t.root, key, row[valueField]},
+			columns: len(t.key) + 1,
+			key:     t.ixKey,
 		}
+		rootNode.entries[len(t.key)] = t.root
+		copy(rootNode.entries[len(t.key)+1:], r)
+
 		rootNode.id, err = t.store.AddBlock(rootNode.entriesAsBlock())
 		if err != nil {
 			return nil, err
@@ -64,7 +67,7 @@ func (t *Tree) addNodeEntry(n *node, key block.Word, row []block.Word) (*node, e
 		}
 	}
 
-	n.insert(n.probe(key)+1, row)
+	n.insert(n.probe(key)+1, r)
 
 	err = t.writeNode(n)
 	if err != nil {
@@ -73,8 +76,9 @@ func (t *Tree) addNodeEntry(n *node, key block.Word, row []block.Word) (*node, e
 	return n, nil
 }
 
-func (t *Tree) splitNode(n *node, key block.Word) (*node, error) {
-	midpoint := n.keyFor(n.minWidth())
+func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
+	midpoint := make([]block.Word, len(t.key))
+	n.keyFor(n.minWidth(), midpoint)
 
 	newNode := &node{
 		columns: n.columns,
@@ -94,12 +98,16 @@ func (t *Tree) splitNode(n *node, key block.Word) (*node, error) {
 		return nil, err
 	}
 
-	n.parent, err = t.addNodeEntry(n.parent, midpoint, []block.Word{midpoint, id})
+	row := make(row, len(t.key)+1)
+	copy(row, midpoint)
+	row[len(t.key)] = id
+
+	n.parent, err = t.addNodeEntry(n.parent, midpoint, row)
 	if err != nil {
 		return nil, err
 	}
 
-	if key > midpoint {
+	if compareValues(midpoint, key) > 0 {
 		newNode.parent = n.parent
 		newNode.pos = 1
 		newNode.id = id

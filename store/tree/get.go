@@ -7,7 +7,7 @@ import (
 type Range struct {
 	tree *Tree
 	node *node
-	key  block.Word
+	key  []block.Word
 	pos  int
 	err  error
 }
@@ -15,8 +15,12 @@ type Range struct {
 // Get queries the tree using the given key, yielding the associated value. If no value has been
 // associated with the given key, then ErrNotFound is returned as an error. Errors may also
 // originate from the block store.
-func (t *Tree) Get(key block.Word) (v []block.Word, err error) {
+func (t *Tree) Get(key []block.Word) (v []block.Word, err error) {
 	wrapErr(&err, "Get", key)
+
+	if len(key) < len(t.key) {
+		return nil, ErrNarrowKey
+	}
 
 	n, err := t.findNode(key)
 	if err != nil {
@@ -24,22 +28,25 @@ func (t *Tree) Get(key block.Word) (v []block.Word, err error) {
 	}
 
 	idx := n.probe(key)
-	if n.keyFor(idx) != key {
+	candidate := make([]block.Word, len(t.key))
+	n.keyFor(idx, candidate)
+
+	if compareValues(candidate, key) != 0 {
 		return nil, ErrNotFound
 	}
 	return n.getRow(idx), nil
 }
 
 // GetRange queries the tree using the given key and returns an iterator over entries of the tree,
-// starting with the largest key that is less than the given key.
-func (t *Tree) GetRange(key block.Word) Range {
+// starting with the largest key that is less than or equal to the given key.
+func (t *Tree) GetRange(key []block.Word) *Range {
 	n, err := t.findNode(key)
 	pos := 0
 	if n != nil {
 		pos = n.probe(key)
 	}
 
-	return Range{
+	return &Range{
 		tree: t,
 		node: n,
 		key:  key,
@@ -70,11 +77,10 @@ func (r *Range) This() []block.Word {
 	return r.node.getRow(r.pos)
 }
 
-func (r *Range) Value() block.Word {
-	return r.This()[valueField]
-}
-
 func (r *Range) Err() error {
+	if r.err == nil {
+		return nil
+	}
 	return &TreeError{
 		Op:  "GetRange",
 		Key: r.key,

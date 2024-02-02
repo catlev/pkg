@@ -1,14 +1,20 @@
 package tree
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/catlev/pkg/store/block"
 )
 
+var (
+	ErrNotFound  = errors.New("not found")
+	ErrNarrowKey = errors.New("not enough values in key")
+)
+
 type TreeError struct {
 	Op  string
-	Key block.Word
+	Key []block.Word
 	Err error
 }
 
@@ -20,7 +26,7 @@ func (e *TreeError) Unwrap() error {
 	return e.Err
 }
 
-func wrapErr(err *error, op string, key block.Word) {
+func wrapErr(err *error, op string, key []block.Word) {
 	if *err == nil {
 		return
 	}

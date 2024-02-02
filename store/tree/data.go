@@ -1,40 +1,38 @@
 package tree
 
 import (
-	"errors"
 	"sort"
-	"unsafe"
 
 	"github.com/catlev/pkg/store/block"
 )
 
-var ErrNotFound = errors.New("not found")
-
 // Maps keys to values, based on a block store.
 type Tree struct {
-	columns, key int
-	store        block.Store
-	root         block.Word
-	depth        int
+	columns    int
+	key, ixKey []int
+	store      block.Store
+	root       block.Word
+	depth      int
 }
 
 type node struct {
-	columns, key int
-	parent       *node
-	pos          int
-	id           block.Word
-	width        int
-	entries      block.Block
+	columns int
+	key     []int
+	parent  *node
+	pos     int
+	id      block.Word
+	width   int
+	entries block.Block
 }
 
-const (
-	keyField = iota
-	valueField
-	branchColumns
-)
+type row []block.Word
 
-func New(columns, key int, s block.Store, dep int, root block.Word) *Tree {
-	return &Tree{columns, key, s, root, dep}
+func New(columns int, key []int, store block.Store, depth int, root block.Word) *Tree {
+	ixKey := make([]int, len(key))
+	for i := range key {
+		ixKey[i] = i
+	}
+	return &Tree{columns, key, ixKey, store, root, depth}
 }
 
 func (t *Tree) Root() block.Word {
@@ -45,31 +43,53 @@ func (t *Tree) Depth() int {
 	return t.depth
 }
 
-func (t *Tree) findNode(key block.Word) (*node, error) {
+// intuition b - a
+// ceteris paribus, a shorter key is less than a longer key
+func compareValues(a, b []block.Word) int {
+	for i := 0; i < min(len(a), len(b)); i++ {
+		switch {
+		case b[i] > a[i]:
+			return 1
+		case a[i] > b[i]:
+			return -1
+		}
+	}
+	switch {
+	case len(b) > len(a):
+		return 1
+	case len(a) > len(b):
+		return -1
+	default:
+		return 0
+	}
+}
+
+func (t *Tree) findNode(key []block.Word) (*node, error) {
 	if t.depth == 0 {
 		return t.readNode(t.columns, t.key, nil, 0, t.root)
 	}
 
-	n, err := t.readNode(branchColumns, keyField, nil, 0, t.root)
+	n, err := t.readNode(len(t.key)+1, t.ixKey, nil, 0, t.root)
 	if err != nil {
 		return nil, err
 	}
 
 	for d := t.depth - 1; d > 0; d-- {
-		n, err = t.followNode(branchColumns, keyField, n, n.probe(key))
+		n, err = t.followNode(len(t.key)+1, t.ixKey, n, n.probe(key))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return t.followNode(t.columns, t.key, n, n.probe(key))
+	step := n.probe(key)
+	return t.followNode(t.columns, t.key, n, step)
 }
 
-func (t *Tree) followNode(columns, key int, n *node, idx int) (*node, error) {
-	return t.readNode(columns, key, n, idx, n.getRow(idx)[valueField])
+func (t *Tree) followNode(columns int, key []int, n *node, idx int) (*node, error) {
+	return t.readNode(columns, key, n, idx, n.getRow(idx)[len(key)])
 }
 
-func (t *Tree) readNode(columns, key int, parent *node, pos int, id block.Word) (*node, error) {
+func (t *Tree) readNode(columns int, key []int, parent *node, pos int, id block.Word) (*node, error) {
 	n := &node{
 		columns: columns,
 		key:     key,
@@ -83,8 +103,18 @@ func (t *Tree) readNode(columns, key int, parent *node, pos int, id block.Word) 
 		return nil, err
 	}
 
+	candidate := make([]block.Word, len(t.key))
 	n.width = sort.Search(n.maxWidth(), func(i int) bool {
-		return i != 0 && n.keyFor(i) == 0
+		if i == 0 {
+			return false
+		}
+		n.keyFor(i, candidate)
+		for _, k := range candidate {
+			if k != 0 {
+				return false
+			}
+		}
+		return true
 	})
 
 	return n, nil
@@ -105,7 +135,7 @@ func (t *Tree) writeNode(n *node) error {
 		return nil
 	}
 
-	n.parent.getRow(n.pos)[valueField] = id
+	n.parent.getRow(n.pos)[len(t.key)] = id
 	return t.writeNode(n.parent)
 }
 
@@ -119,13 +149,15 @@ func (t *Tree) writeNodes(ns ...*node) error {
 	return nil
 }
 
-func (n *node) probe(key block.Word) int {
+func (n *node) probe(key []block.Word) int {
+	candidate := make([]block.Word, len(n.key))
 	return sort.Search(n.width-1, func(i int) bool {
-		return n.keyFor(i+1) > key
+		n.keyFor(i+1, candidate)
+		return compareValues(candidate, key) < 0
 	})
 }
 
-func (n *node) insert(idx int, entries ...[]block.Word) {
+func (n *node) insert(idx int, entries ...row) {
 	copy(n.entries[(idx+len(entries))*n.columns:], n.entries[idx*n.columns:])
 	for i, r := range entries {
 		copy(n.entries[(idx+i)*n.columns:], r)
@@ -140,27 +172,47 @@ func (n *node) remove(idx, count int) {
 }
 
 func (n *node) entriesAsBlock() *block.Block {
-	return (*block.Block)(unsafe.Pointer(&n.entries))
+	return &n.entries
 }
 
-func (n *node) keyFor(idx int) block.Word {
+func (n *node) keyFor(idx int, into []block.Word) {
 	if n == nil {
-		return 0
+		for i := range into {
+			into[i] = 0
+		}
+		return
 	}
 	if idx == 0 {
-		return n.parent.keyFor(n.pos)
+		n.parent.keyFor(n.pos, into)
+		return
 	}
-	return n.getRow(idx)[n.key]
+	row := n.getRow(idx)
+	for i, ix := range n.key {
+		into[i] = row[ix]
+	}
 }
 
-func (n *node) getRow(idx int) []block.Word {
+func (n *node) getKey(idx int) []block.Word {
+	key := make([]block.Word, len(n.key))
+	n.keyFor(idx, key)
+	return key
+}
+
+func (n *node) setkey(idx int, from []block.Word) {
+	row := n.getRow(idx)
+	for i, ix := range n.key {
+		row[ix] = from[i]
+	}
+}
+
+func (n *node) getRow(idx int) row {
 	return n.entries[idx*n.columns : (idx+1)*n.columns]
 }
 
-func (n *node) getRows(from, to int) [][]block.Word {
-	rows := make([][]block.Word, to-from)
+func (n *node) getRows(from, to int) []row {
+	rows := make([]row, to-from)
 	for i := range rows {
-		rows[i] = n.entries[(i+from)*n.columns : (i+from+1)*n.columns]
+		rows[i] = n.getRow(i + from)
 	}
 	return rows
 }
@@ -183,11 +235,15 @@ func (n *node) maxWidth() int {
 	return block.WordSize / n.columns
 }
 
-func rowsEqual(r, s []block.Word) bool {
-	for i := range r {
-		if r[i] != s[i] {
-			return false
-		}
+func (r row) extractKey(spec []int, into []block.Word) {
+	for i, p := range spec {
+		into[i] = r[p]
 	}
-	return true
+}
+
+func (n *node) compareKeyAt(idx int, key []block.Word) int {
+	if n == nil {
+		return 1
+	}
+	return compareValues(n.getKey(idx), key)
 }

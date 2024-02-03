@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getRow(t *testing.T, tree *Tree, key []block.Word) row {
+func getRow(t *testing.T, tree *Tree, key []block.Word) []block.Word {
 	r := tree.GetRange(key)
 	if !r.Next() {
 		t.Errorf("missing value for key %v", key)

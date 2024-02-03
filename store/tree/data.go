@@ -25,8 +25,6 @@ type node struct {
 	entries block.Block
 }
 
-type row []block.Word
-
 func New(columns int, key []int, store block.Store, depth int, root block.Word) *Tree {
 	ixKey := make([]int, len(key))
 	for i := range key {
@@ -157,7 +155,7 @@ func (n *node) probe(key []block.Word) int {
 	})
 }
 
-func (n *node) insert(idx int, entries ...row) {
+func (n *node) insert(idx int, entries ...[]block.Word) {
 	copy(n.entries[(idx+len(entries))*n.columns:], n.entries[idx*n.columns:])
 	for i, r := range entries {
 		copy(n.entries[(idx+i)*n.columns:], r)
@@ -187,9 +185,7 @@ func (n *node) keyFor(idx int, into []block.Word) {
 		return
 	}
 	row := n.getRow(idx)
-	for i, ix := range n.key {
-		into[i] = row[ix]
-	}
+	extractKey(row, n.key, into)
 }
 
 func (n *node) getKey(idx int) []block.Word {
@@ -205,12 +201,12 @@ func (n *node) setkey(idx int, from []block.Word) {
 	}
 }
 
-func (n *node) getRow(idx int) row {
+func (n *node) getRow(idx int) []block.Word {
 	return n.entries[idx*n.columns : (idx+1)*n.columns]
 }
 
-func (n *node) getRows(from, to int) []row {
-	rows := make([]row, to-from)
+func (n *node) getRows(from, to int) [][]block.Word {
+	rows := make([][]block.Word, to-from)
 	for i := range rows {
 		rows[i] = n.getRow(i + from)
 	}
@@ -235,9 +231,9 @@ func (n *node) maxWidth() int {
 	return block.WordSize / n.columns
 }
 
-func (r row) extractKey(spec []int, into []block.Word) {
+func extractKey(from []block.Word, spec []int, into []block.Word) {
 	for i, p := range spec {
-		into[i] = r[p]
+		into[i] = from[p]
 	}
 }
 

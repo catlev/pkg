@@ -5,8 +5,8 @@ import (
 )
 
 // Put establishes an association between key and value. Errors may be relayed from the block store.
-func (t *Tree) Put(r row) (err error) {
-	if len(r) != t.columns {
+func (t *Tree) Put(row []block.Word) (err error) {
+	if len(row) != t.columns {
 		return &TreeError{
 			Err: ErrBadRow,
 			Op:  "Put",
@@ -14,7 +14,7 @@ func (t *Tree) Put(r row) (err error) {
 	}
 
 	key := make([]block.Word, len(t.key))
-	r.extractKey(t.key, key)
+	extractKey(row, t.key, key)
 
 	defer wrapErr(&err, "Put", key)
 
@@ -25,22 +25,22 @@ func (t *Tree) Put(r row) (err error) {
 
 	idx := n.probe(key)
 
-	if compareValues(n.getRow(idx), r) == 0 {
+	if compareValues(n.getRow(idx), row) == 0 {
 		// no update required
 		return nil
 	}
 
 	if n.compareKeyAt(idx, key) == 0 {
 		// updating existing entry, no need to make room
-		copy(n.entries[idx*n.columns:], r)
+		copy(n.entries[idx*n.columns:], row)
 		return t.writeNode(n)
 	}
 
-	_, err = t.addNodeEntry(n, key, r)
+	_, err = t.addNodeEntry(n, key, row)
 	return err
 }
 
-func (t *Tree) addNodeEntry(n *node, key []block.Word, r row) (*node, error) {
+func (t *Tree) addNodeEntry(n *node, key []block.Word, r []block.Word) (*node, error) {
 	var err error
 
 	if n == nil {
@@ -99,7 +99,7 @@ func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
 		return nil, err
 	}
 
-	row := make(row, len(t.key)+1)
+	row := make([]block.Word, len(t.key)+1)
 	copy(row, midpoint)
 	row[len(t.key)] = id
 

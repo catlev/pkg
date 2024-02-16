@@ -13,7 +13,7 @@ import (
 func TestTreeProperties(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
-	tree := New(3, []int{0}, store, 0, start)
+	tree := New(3, 1, store, 0, start)
 
 	if err := quick.Check(func(key, value1, value2 block.Word) bool {
 
@@ -41,7 +41,7 @@ func TestTreeProperties(t *testing.T) {
 func TestWideTreeProperties(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
-	tree := New(4, []int{0, 1}, store, 0, start)
+	tree := New(4, 2, store, 0, start)
 
 	if err := quick.Check(func(key1, key2, value1, value2 block.Word) bool {
 

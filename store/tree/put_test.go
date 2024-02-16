@@ -9,11 +9,12 @@ import (
 )
 
 func getRow(t *testing.T, tree *Tree, key []block.Word) []block.Word {
-	r := tree.GetRange(key)
-	if !r.Next() {
-		t.Errorf("missing value for key %v", key)
+	t.Helper()
+	r, err := tree.Get(key)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return r.This()
+	return r
 }
 
 func TestPutUpdate(t *testing.T) {
@@ -21,7 +22,7 @@ func TestPutUpdate(t *testing.T) {
 	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
 	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
 	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
-	tree := New(2, []int{0}, store, 1, start)
+	tree := New(2, 1, store, 1, start)
 
 	tree.Put([]block.Word{20, 7})
 	row := getRow(t, tree, []block.Word{20})
@@ -34,7 +35,7 @@ func TestPutAddWithRoom(t *testing.T) {
 	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
 	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
 	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
-	tree := New(2, []int{0}, store, 1, start)
+	tree := New(2, 1, store, 1, start)
 
 	tree.Put([]block.Word{25, 7})
 	row := getRow(t, tree, []block.Word{25})
@@ -49,7 +50,7 @@ func TestPutAddRoot(t *testing.T) {
 		b[i] = block.Word(i)
 	}
 	start, _ := store.AddBlock(&b)
-	tree := New(2, []int{0}, store, 0, start)
+	tree := New(2, 1, store, 0, start)
 
 	tree.Put([]block.Word{25, 100})
 	row := getRow(t, tree, []block.Word{25})
@@ -64,7 +65,7 @@ func TestPutAddRootLarge(t *testing.T) {
 		b[i] = block.Word(i)
 	}
 	start, _ := store.AddBlock(&b)
-	tree := New(2, []int{0}, store, 0, start)
+	tree := New(2, 1, store, 0, start)
 
 	tree.Put([]block.Word{45, 100})
 	row := getRow(t, tree, []block.Word{45})
@@ -75,7 +76,7 @@ func TestPutAddRootLarge(t *testing.T) {
 func TestPutDeep(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(&block.Block{})
-	tree := New(2, []int{0}, store, 0, start)
+	tree := New(2, 1, store, 0, start)
 
 	for i := 0; i < 100; i++ {
 		tree.Put([]block.Word{block.Word(i), block.Word(i * 2)})
@@ -99,7 +100,7 @@ func TestPutNewBlock(t *testing.T) {
 	d1, _ := store.AddBlock(&block.Block{0, 1, 10, 2, 20, 3})
 	d2, _ := store.AddBlock(&block.Block{0, 4, 40, 5, 50, 6})
 	start, _ := store.AddBlock(&block.Block{0, d1, 30, d2})
-	tree := New(2, []int{0}, store, 1, start)
+	tree := New(2, 1, store, 1, start)
 
 	tree.Put([]block.Word{20, 7})
 	row := getRow(t, tree, []block.Word{20})

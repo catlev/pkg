@@ -9,7 +9,7 @@ import (
 func (t *Tree) Delete(key []block.Word) (err error) {
 	defer wrapErr(&err, "Delete", key)
 
-	if len(key) != len(t.key) {
+	if len(key) != t.key {
 		return ErrKeyWidth
 	}
 
@@ -35,7 +35,7 @@ func (t *Tree) deleteFromNode(n *node, idx int) error {
 		}
 		if n.width == 2 {
 			// superfluous root node
-			t.root = n.getRow((idx + 1) % 2)[len(t.key)]
+			t.root = n.getRow((idx + 1) % 2)[t.key]
 			t.depth--
 			return t.store.FreeBlock(n.id)
 		}
@@ -105,11 +105,12 @@ func (t *Tree) getSucc(n *node) (*node, error) {
 }
 
 func (t *Tree) borrowPre(n, pre *node) error {
-	midpoint := pre.getKey(n.minWidth())
+	midpoint := make([]block.Word, t.key)
+	copy(midpoint, pre.getKey(n.minWidth()))
 
 	n.setkey(0, n.getKey(0))
 	n.insert(0, pre.getRows(n.minWidth(), pre.width)...)
-	n.setkey(0, make([]block.Word, len(t.key)))
+	n.setkey(0, make([]block.Word, t.key))
 
 	pre.clearRows(n.minWidth(), -1)
 
@@ -120,12 +121,13 @@ func (t *Tree) borrowPre(n, pre *node) error {
 
 func (t *Tree) borrowSucc(n, succ *node) error {
 	amt := succ.width - succ.minWidth()
-	midpoint := succ.getKey(amt)
+	midpoint := make([]block.Word, t.key)
+	copy(midpoint, succ.getKey(amt))
 
 	succ.setkey(0, succ.getKey(0))
 	n.insert(n.width, succ.getRows(0, amt)...)
 	succ.remove(0, amt)
-	succ.setkey(0, make([]block.Word, len(t.key)))
+	succ.setkey(0, make([]block.Word, t.key))
 
 	succ.parent.setkey(succ.pos, midpoint)
 
@@ -154,7 +156,7 @@ func (t *Tree) mergeSucc(n, succ *node) error {
 	succ.setkey(0, succ.getKey(0))
 	copy(succ.entries[n.width*n.columns:], succ.entries[:])
 	copy(succ.entries[:n.width*n.columns], n.entries[:])
-	n.setkey(0, make([]block.Word, len(t.key)))
+	n.setkey(0, make([]block.Word, t.key))
 
 	err := t.writeNode(succ)
 	if err != nil {

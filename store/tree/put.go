@@ -13,8 +13,7 @@ func (t *Tree) Put(row []block.Word) (err error) {
 		}
 	}
 
-	key := make([]block.Word, len(t.key))
-	extractKey(row, t.key, key)
+	key := row[:t.key]
 
 	defer wrapErr(&err, "Put", key)
 
@@ -45,11 +44,11 @@ func (t *Tree) addNodeEntry(n *node, key []block.Word, r []block.Word) (*node, e
 
 	if n == nil {
 		rootNode := &node{
-			columns: len(t.key) + 1,
-			key:     t.ixKey,
+			columns: t.key + 1,
+			key:     t.key,
 		}
-		rootNode.entries[len(t.key)] = t.root
-		copy(rootNode.entries[len(t.key)+1:], r)
+		rootNode.entries[t.key] = t.root
+		copy(rootNode.entries[t.key+1:], r)
 
 		rootNode.id, err = t.store.AddBlock(rootNode.entriesAsBlock())
 		if err != nil {
@@ -79,7 +78,8 @@ func (t *Tree) addNodeEntry(n *node, key []block.Word, r []block.Word) (*node, e
 }
 
 func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
-	midpoint := n.getKey(n.minWidth())
+	midpoint := make([]block.Word, t.key)
+	copy(midpoint, n.getKey(n.minWidth()))
 
 	newNode := &node{
 		columns: n.columns,
@@ -99,9 +99,9 @@ func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
 		return nil, err
 	}
 
-	row := make([]block.Word, len(t.key)+1)
+	row := make([]block.Word, t.key+1)
 	copy(row, midpoint)
-	row[len(t.key)] = id
+	row[t.key] = id
 
 	n.parent, err = t.addNodeEntry(n.parent, midpoint, row)
 	if err != nil {

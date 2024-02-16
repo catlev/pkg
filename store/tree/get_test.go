@@ -58,7 +58,7 @@ func TestCompare(t *testing.T) {
 func TestProbe(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock(0))
-	tree := New(2, []int{0}, store, 0, start)
+	tree := New(2, 1, store, 0, start)
 	node, _ := tree.findNode([]block.Word{0})
 
 	t.Log(node)
@@ -74,7 +74,7 @@ func TestProbe(t *testing.T) {
 func TestWideProbe(t *testing.T) {
 	store := mem.New()
 	start, _ := store.AddBlock(buildBlock2(0))
-	tree := New(4, []int{0, 1}, store, 0, start)
+	tree := New(4, 2, store, 0, start)
 	node, _ := tree.findNode([]block.Word{0, 0})
 
 	t.Log(node)
@@ -92,7 +92,7 @@ func TestGetRange(t *testing.T) {
 	d1, _ := store.AddBlock(buildBlock(0))
 	d2, _ := store.AddBlock(buildBlock(32))
 	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
-	tree := New(2, []int{0}, store, 1, start)
+	tree := New(2, 1, store, 1, start)
 
 	for i := 0; i < 64; i++ {
 		r := tree.GetRange([]block.Word{block.Word(i)})
@@ -114,7 +114,7 @@ func TestWideKey(t *testing.T) {
 	d1, _ := store.AddBlock(buildBlock2(0))
 	d2, _ := store.AddBlock(buildBlock2(16))
 	start, _ := store.AddBlock(&block.Block{0, 0, d1, 16, 32, d2})
-	tree := New(4, []int{0, 1}, store, 1, start)
+	tree := New(4, 2, store, 1, start)
 
 	for i := 0; i < 32; i++ {
 		r := tree.GetRange([]block.Word{block.Word(i), block.Word(i * 2)})
@@ -136,7 +136,7 @@ func TestWideKeyPartial(t *testing.T) {
 	d1, _ := store.AddBlock(buildBlock2(0))
 	d2, _ := store.AddBlock(buildBlock2(16))
 	start, _ := store.AddBlock(&block.Block{0, 0, d1, 16, 32, d2})
-	tree := New(4, []int{0, 1}, store, 1, start)
+	tree := New(4, 2, store, 1, start)
 
 	for i := 0; i < 32; i++ {
 		r := tree.GetRange([]block.Word{block.Word(i), block.Word(i * 2)})

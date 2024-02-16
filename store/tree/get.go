@@ -18,7 +18,7 @@ type Range struct {
 func (t *Tree) Get(key []block.Word) (v []block.Word, err error) {
 	wrapErr(&err, "Get", key)
 
-	if len(key) != len(t.key) {
+	if len(key) != t.key {
 		return nil, ErrKeyWidth
 	}
 
@@ -28,8 +28,7 @@ func (t *Tree) Get(key []block.Word) (v []block.Word, err error) {
 	}
 
 	idx := n.probe(key)
-	candidate := make([]block.Word, len(t.key))
-	n.keyFor(idx, candidate)
+	candidate := n.getKey(idx)
 
 	if compareValues(candidate, key) != 0 {
 		return nil, ErrNotFound

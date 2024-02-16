@@ -8,16 +8,16 @@ import (
 
 // Maps keys to values, based on a block store.
 type Tree struct {
-	columns    int
-	key, ixKey []int
-	store      block.Store
-	root       block.Word
-	depth      int
+	columns int
+	key     int
+	store   block.Store
+	root    block.Word
+	depth   int
 }
 
 type node struct {
 	columns int
-	key     []int
+	key     int
 	parent  *node
 	pos     int
 	id      block.Word
@@ -25,12 +25,8 @@ type node struct {
 	entries block.Block
 }
 
-func New(columns int, key []int, store block.Store, depth int, root block.Word) *Tree {
-	ixKey := make([]int, len(key))
-	for i := range key {
-		ixKey[i] = i
-	}
-	return &Tree{columns, key, ixKey, store, root, depth}
+func New(columns int, key int, store block.Store, depth int, root block.Word) *Tree {
+	return &Tree{columns, key, store, root, depth}
 }
 
 func (t *Tree) Root() block.Word {
@@ -67,13 +63,13 @@ func (t *Tree) findNode(key []block.Word) (*node, error) {
 		return t.readNode(t.columns, t.key, nil, 0, t.root)
 	}
 
-	n, err := t.readNode(len(t.key)+1, t.ixKey, nil, 0, t.root)
+	n, err := t.readNode(t.key+1, t.key, nil, 0, t.root)
 	if err != nil {
 		return nil, err
 	}
 
 	for d := t.depth - 1; d > 0; d-- {
-		n, err = t.followNode(len(t.key)+1, t.ixKey, n, n.probe(key))
+		n, err = t.followNode(t.key+1, t.key, n, n.probe(key))
 		if err != nil {
 			return nil, err
 		}
@@ -83,11 +79,11 @@ func (t *Tree) findNode(key []block.Word) (*node, error) {
 	return t.followNode(t.columns, t.key, n, step)
 }
 
-func (t *Tree) followNode(columns int, key []int, n *node, idx int) (*node, error) {
-	return t.readNode(columns, key, n, idx, n.getRow(idx)[len(key)])
+func (t *Tree) followNode(columns, key int, n *node, idx int) (*node, error) {
+	return t.readNode(columns, key, n, idx, n.getRow(idx)[key])
 }
 
-func (t *Tree) readNode(columns int, key []int, parent *node, pos int, id block.Word) (*node, error) {
+func (t *Tree) readNode(columns, key int, parent *node, pos int, id block.Word) (*node, error) {
 	n := &node{
 		columns: columns,
 		key:     key,
@@ -101,12 +97,11 @@ func (t *Tree) readNode(columns int, key []int, parent *node, pos int, id block.
 		return nil, err
 	}
 
-	candidate := make([]block.Word, len(t.key))
 	n.width = sort.Search(n.maxWidth(), func(i int) bool {
 		if i == 0 {
 			return false
 		}
-		n.keyFor(i, candidate)
+		candidate := n.getKey(i)
 		for _, k := range candidate {
 			if k != 0 {
 				return false
@@ -133,7 +128,7 @@ func (t *Tree) writeNode(n *node) error {
 		return nil
 	}
 
-	n.parent.getRow(n.pos)[len(t.key)] = id
+	n.parent.getRow(n.pos)[t.key] = id
 	return t.writeNode(n.parent)
 }
 
@@ -148,9 +143,8 @@ func (t *Tree) writeNodes(ns ...*node) error {
 }
 
 func (n *node) probe(key []block.Word) int {
-	candidate := make([]block.Word, len(n.key))
 	return sort.Search(n.width-1, func(i int) bool {
-		n.keyFor(i+1, candidate)
+		candidate := n.getKey(i + 1)
 		return compareValues(candidate, key) < 0
 	})
 }
@@ -173,32 +167,19 @@ func (n *node) entriesAsBlock() *block.Block {
 	return &n.entries
 }
 
-func (n *node) keyFor(idx int, into []block.Word) {
-	if n == nil {
-		for i := range into {
-			into[i] = 0
-		}
-		return
-	}
-	if idx == 0 {
-		n.parent.keyFor(n.pos, into)
-		return
-	}
-	row := n.getRow(idx)
-	extractKey(row, n.key, into)
-}
-
 func (n *node) getKey(idx int) []block.Word {
-	key := make([]block.Word, len(n.key))
-	n.keyFor(idx, key)
-	return key
+	if idx == 0 {
+		if n.parent == nil {
+			return make([]block.Word, n.key)
+		}
+		return n.parent.getKey(n.pos)
+	}
+	return n.getRow(idx)[:n.key]
 }
 
 func (n *node) setkey(idx int, from []block.Word) {
 	row := n.getRow(idx)
-	for i, ix := range n.key {
-		row[ix] = from[i]
-	}
+	copy(row, from)
 }
 
 func (n *node) getRow(idx int) []block.Word {
@@ -229,12 +210,6 @@ func (n *node) minWidth() int {
 
 func (n *node) maxWidth() int {
 	return block.WordSize / n.columns
-}
-
-func extractKey(from []block.Word, spec []int, into []block.Word) {
-	for i, p := range spec {
-		into[i] = from[p]
-	}
 }
 
 func (n *node) compareKeyAt(idx int, key []block.Word) int {

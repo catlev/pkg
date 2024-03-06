@@ -4,18 +4,19 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/catlev/pkg/store/block"
+	"github.com/catlev/pkg/domain"
+
 	"github.com/catlev/pkg/store/block/mem"
 )
 
-func assertDeletionSuccess(t *testing.T, tree *Tree, min, max, without block.Word) {
+func assertDeletionSuccess(t *testing.T, tree *Tree, min, max, without domain.Word) {
 	t.Helper()
-	tree.Delete([]block.Word{without})
+	tree.Delete([]domain.Word{without})
 	for k := min; k < max; k++ {
 		t.Run(strconv.Itoa(int(k)), func(t *testing.T) {
 			t.Helper()
 
-			v, err := tree.Get([]block.Word{k})
+			v, err := tree.Get([]domain.Word{k})
 
 			if (err != nil) != (k == without) {
 				t.Error(err)
@@ -47,7 +48,7 @@ func TestDeleteBorrowPre(t *testing.T) {
 	}
 
 	d2, _ := store.AddBlock(b)
-	start, _ := store.AddBlock(&block.Block{0, d1, 32, d2})
+	start, _ := store.AddBlock(&domain.Block{0, d1, 32, d2})
 	tree := New(2, 1, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 48, 35)
@@ -64,7 +65,7 @@ func TestDeleteBorrowSucc(t *testing.T) {
 	d1, _ := store.AddBlock(b)
 
 	d2, _ := store.AddBlock(buildBlock(16))
-	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
+	start, _ := store.AddBlock(&domain.Block{0, d1, 16, d2})
 	tree := New(2, 1, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 48, 10)
@@ -85,7 +86,7 @@ func TestDeleteMergePre(t *testing.T) {
 	}
 	d2, _ := store.AddBlock(b2)
 
-	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
+	start, _ := store.AddBlock(&domain.Block{0, d1, 16, d2})
 	tree := New(2, 1, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 32, 20)
@@ -106,7 +107,7 @@ func TestDeleteMergeSucc(t *testing.T) {
 	}
 	d2, _ := store.AddBlock(b2)
 
-	start, _ := store.AddBlock(&block.Block{0, d1, 16, d2})
+	start, _ := store.AddBlock(&domain.Block{0, d1, 16, d2})
 	tree := New(2, 1, store, 1, start)
 
 	assertDeletionSuccess(t, tree, 0, 32, 10)

@@ -5,9 +5,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/catlev/pkg/domain"
 	"github.com/catlev/pkg/model"
 	"github.com/catlev/pkg/path/syntax"
-	"github.com/catlev/pkg/store/block"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,8 +64,8 @@ type testStore struct {
 }
 
 type storeArm struct {
-	entityID block.Word
-	fields   []block.Word
+	entityID domain.Word
+	fields   []domain.Word
 }
 
 type testCursor struct {
@@ -93,7 +93,7 @@ func (c *testCursor) This() Object {
 	}
 }
 
-func (s *testStore) FindEntities(entityID block.Word, key []block.Word) Cursor {
+func (s *testStore) FindEntities(entityID domain.Word, key []domain.Word) Cursor {
 	for _, a := range s.arms {
 		if a.entityID != entityID {
 			continue
@@ -109,12 +109,12 @@ func (s *testStore) FindEntities(entityID block.Word, key []block.Word) Cursor {
 	return &errCursor{nil}
 }
 
-func (*testStore) ParseValue(valueID block.Word, value string) (block.Word, error) {
+func (*testStore) ParseValue(valueID domain.Word, value string) (domain.Word, error) {
 	i, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, err
 	}
-	return block.Word(i), nil
+	return domain.Word(i), nil
 }
 
 func cursorEquals(c Cursor, xs []Object) bool {
@@ -157,7 +157,7 @@ func TestEval(t *testing.T) {
 		arms: []storeArm{
 			{
 				entityID: 3,
-				fields: []block.Word{
+				fields: []domain.Word{
 					1, 2,
 					2, 10,
 				},
@@ -169,7 +169,7 @@ func TestEval(t *testing.T) {
 	b := h.Eval(h.Absolute(), "1|(person&2/~rank)/size")
 
 	assert.True(t, cursorEquals(b.Enumerate(), []Object{
-		{EntityID: model.IntegerID, Fields: []block.Word{1}},
-		{EntityID: model.IntegerID, Fields: []block.Word{10}},
+		{EntityID: model.IntegerID, Fields: []domain.Word{1}},
+		{EntityID: model.IntegerID, Fields: []domain.Word{10}},
 	}))
 }

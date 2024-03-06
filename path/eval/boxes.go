@@ -3,18 +3,18 @@ package eval
 import (
 	"sort"
 
+	"github.com/catlev/pkg/domain"
 	"github.com/catlev/pkg/model"
-	"github.com/catlev/pkg/store/block"
 )
 
 type Store interface {
-	FindEntities(entityID block.Word, key []block.Word) Cursor
-	ParseValue(valueID block.Word, value string) (block.Word, error)
+	FindEntities(entityID domain.Word, key []domain.Word) Cursor
+	ParseValue(valueID domain.Word, value string) (domain.Word, error)
 }
 
 type Object struct {
-	EntityID block.Word
-	Fields   []block.Word
+	EntityID domain.Word
+	Fields   []domain.Word
 }
 
 type Box struct {
@@ -25,9 +25,9 @@ type Box struct {
 }
 
 type Query struct {
-	entityID block.Word
+	entityID domain.Word
 	mask     uint64
-	where    []block.Word
+	where    []domain.Word
 }
 
 func (s Box) Enumerate() Cursor {
@@ -94,7 +94,7 @@ func (s Box) Intersection(t Box) Box {
 	return res
 }
 
-func (s Box) findAll(entityID block.Word) []Query {
+func (s Box) findAll(entityID domain.Word) []Query {
 	start := sort.Search(len(s.contents), func(i int) bool {
 		return s.contents[i].entityID >= entityID
 	})
@@ -118,9 +118,9 @@ func (s Box) runQuery(a Query) Cursor {
 	}
 }
 
-func (s Box) buildKey(a Query) []block.Word {
+func (s Box) buildKey(a Query) []domain.Word {
 	t := s.model.Types[a.entityID]
-	var key []block.Word
+	var key []domain.Word
 	for i, c := range t.Attributes {
 		if !c.Identifying {
 			break
@@ -220,7 +220,7 @@ func (a Query) merge(b Query) (Query, bool) {
 	if a.entityID != b.entityID {
 		return Query{}, false
 	}
-	res := make([]block.Word, len(a.where))
+	res := make([]domain.Word, len(a.where))
 	for i, p := range a.where {
 		q := b.where[i]
 		if !a.constrains(i) {

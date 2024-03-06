@@ -3,20 +3,20 @@ package mem
 import (
 	"io"
 
-	"github.com/catlev/pkg/store/block"
+	"github.com/catlev/pkg/domain"
 )
 
 type Store struct {
-	blocks []block.Word
-	free   []block.Word
+	blocks []domain.Word
+	free   []domain.Word
 }
 
 func New() *Store {
-	return &Store{make([]block.Word, block.WordSize), nil}
+	return &Store{make([]domain.Word, domain.WordSize), nil}
 }
 
-func (s *Store) ReadBlock(id block.Word, b *block.Block) error {
-	if int(id) > len(s.blocks)-block.WordSize {
+func (s *Store) ReadBlock(id domain.Word, b *domain.Block) error {
+	if int(id) > len(s.blocks)-domain.WordSize {
 		return io.ErrUnexpectedEOF
 	}
 
@@ -24,27 +24,27 @@ func (s *Store) ReadBlock(id block.Word, b *block.Block) error {
 	return nil
 }
 
-func (s *Store) AddBlock(b *block.Block) (block.Word, error) {
-	var id block.Word
+func (s *Store) AddBlock(b *domain.Block) (domain.Word, error) {
+	var id domain.Word
 
 	if len(s.free) != 0 {
 		id = s.free[len(s.free)-1]
 		s.free = s.free[:len(s.free)-1]
 		copy(s.blocks[id:], (*b)[:])
 	} else {
-		id = block.Word(len(s.blocks))
+		id = domain.Word(len(s.blocks))
 		s.blocks = append(s.blocks, (*b)[:]...)
 	}
 
 	return id, nil
 }
 
-func (s *Store) WriteBlock(id block.Word, b *block.Block) (block.Word, error) {
+func (s *Store) WriteBlock(id domain.Word, b *domain.Block) (domain.Word, error) {
 	copy(s.blocks[id:], (*b)[:])
 	return id, nil
 }
 
-func (s *Store) FreeBlock(id block.Word) error {
+func (s *Store) FreeBlock(id domain.Word) error {
 	s.free = append(s.free, id)
 	return nil
 }

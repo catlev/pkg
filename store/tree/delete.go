@@ -1,12 +1,10 @@
 package tree
 
-import (
-	"github.com/catlev/pkg/store/block"
-)
+import "github.com/catlev/pkg/domain"
 
 // Delete removes the association between the given key and its value. If no association exists,
 // ErrNotFound is returned. Errors may also originate from the block store.
-func (t *Tree) Delete(key []block.Word) (err error) {
+func (t *Tree) Delete(key []domain.Word) (err error) {
 	defer wrapErr(&err, "Delete", key)
 
 	if len(key) != t.key {
@@ -105,12 +103,12 @@ func (t *Tree) getSucc(n *node) (*node, error) {
 }
 
 func (t *Tree) borrowPre(n, pre *node) error {
-	midpoint := make([]block.Word, t.key)
+	midpoint := make([]domain.Word, t.key)
 	copy(midpoint, pre.getKey(n.minWidth()))
 
 	n.setkey(0, n.getKey(0))
 	n.insert(0, pre.getRows(n.minWidth(), pre.width)...)
-	n.setkey(0, make([]block.Word, t.key))
+	n.setkey(0, make([]domain.Word, t.key))
 
 	pre.clearRows(n.minWidth(), -1)
 
@@ -121,13 +119,13 @@ func (t *Tree) borrowPre(n, pre *node) error {
 
 func (t *Tree) borrowSucc(n, succ *node) error {
 	amt := succ.width - succ.minWidth()
-	midpoint := make([]block.Word, t.key)
+	midpoint := make([]domain.Word, t.key)
 	copy(midpoint, succ.getKey(amt))
 
 	succ.setkey(0, succ.getKey(0))
 	n.insert(n.width, succ.getRows(0, amt)...)
 	succ.remove(0, amt)
-	succ.setkey(0, make([]block.Word, t.key))
+	succ.setkey(0, make([]domain.Word, t.key))
 
 	succ.parent.setkey(succ.pos, midpoint)
 
@@ -156,7 +154,7 @@ func (t *Tree) mergeSucc(n, succ *node) error {
 	succ.setkey(0, succ.getKey(0))
 	copy(succ.entries[n.width*n.columns:], succ.entries[:])
 	copy(succ.entries[:n.width*n.columns], n.entries[:])
-	n.setkey(0, make([]block.Word, t.key))
+	n.setkey(0, make([]domain.Word, t.key))
 
 	err := t.writeNode(succ)
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/catlev/pkg/store/block"
+	"github.com/catlev/pkg/domain"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 
 type TreeError struct {
 	Op  string
-	Key []block.Word
+	Key []domain.Word
 	Err error
 }
 
@@ -27,7 +27,7 @@ func (e *TreeError) Unwrap() error {
 	return e.Err
 }
 
-func wrapErr(err *error, op string, key []block.Word) {
+func wrapErr(err *error, op string, key []domain.Word) {
 	if *err == nil {
 		return
 	}

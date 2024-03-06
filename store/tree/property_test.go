@@ -6,23 +6,23 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/catlev/pkg/store/block"
+	"github.com/catlev/pkg/domain"
 	"github.com/catlev/pkg/store/block/mem"
 )
 
 func TestTreeProperties(t *testing.T) {
 	store := mem.New()
-	start, _ := store.AddBlock(&block.Block{})
+	start, _ := store.AddBlock(&domain.Block{})
 	tree := New(3, 1, store, 0, start)
 
-	if err := quick.Check(func(key, value1, value2 block.Word) bool {
+	if err := quick.Check(func(key, value1, value2 domain.Word) bool {
 
-		err := tree.Put([]block.Word{key, value1, value2})
+		err := tree.Put([]domain.Word{key, value1, value2})
 		if err != nil {
 			return false
 		}
 
-		row, err := tree.Get([]block.Word{key})
+		row, err := tree.Get([]domain.Word{key})
 		if err != nil {
 			return false
 		}
@@ -40,17 +40,17 @@ func TestTreeProperties(t *testing.T) {
 
 func TestWideTreeProperties(t *testing.T) {
 	store := mem.New()
-	start, _ := store.AddBlock(&block.Block{})
+	start, _ := store.AddBlock(&domain.Block{})
 	tree := New(4, 2, store, 0, start)
 
-	if err := quick.Check(func(key1, key2, value1, value2 block.Word) bool {
+	if err := quick.Check(func(key1, key2, value1, value2 domain.Word) bool {
 
-		err := tree.Put([]block.Word{key1, key2, value1, value2})
+		err := tree.Put([]domain.Word{key1, key2, value1, value2})
 		if err != nil {
 			return false
 		}
 
-		row, err := tree.Get([]block.Word{key1, key2})
+		row, err := tree.Get([]domain.Word{key1, key2})
 		if err != nil {
 			return false
 		}

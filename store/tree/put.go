@@ -1,11 +1,9 @@
 package tree
 
-import (
-	"github.com/catlev/pkg/store/block"
-)
+import "github.com/catlev/pkg/domain"
 
 // Put establishes an association between key and value. Errors may be relayed from the block store.
-func (t *Tree) Put(row []block.Word) (err error) {
+func (t *Tree) Put(row []domain.Word) (err error) {
 	if len(row) != t.columns {
 		return &TreeError{
 			Err: ErrBadRow,
@@ -39,7 +37,7 @@ func (t *Tree) Put(row []block.Word) (err error) {
 	return err
 }
 
-func (t *Tree) addNodeEntry(n *node, key []block.Word, r []block.Word) (*node, error) {
+func (t *Tree) addNodeEntry(n *node, key []domain.Word, r []domain.Word) (*node, error) {
 	var err error
 
 	if n == nil {
@@ -77,8 +75,8 @@ func (t *Tree) addNodeEntry(n *node, key []block.Word, r []block.Word) (*node, e
 	return n, nil
 }
 
-func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
-	midpoint := make([]block.Word, t.key)
+func (t *Tree) splitNode(n *node, key []domain.Word) (*node, error) {
+	midpoint := make([]domain.Word, t.key)
 	copy(midpoint, n.getKey(n.minWidth()))
 
 	newNode := &node{
@@ -99,7 +97,7 @@ func (t *Tree) splitNode(n *node, key []block.Word) (*node, error) {
 		return nil, err
 	}
 
-	row := make([]block.Word, t.key+1)
+	row := make([]domain.Word, t.key+1)
 	copy(row, midpoint)
 	row[t.key] = id
 

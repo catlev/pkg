@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/catlev/pkg/domain"
 	"github.com/catlev/pkg/path"
 	"github.com/catlev/pkg/path/syntax"
-	"github.com/catlev/pkg/store/block"
 	"github.com/catlev/pkg/stream"
 )
 
@@ -18,7 +18,7 @@ type EntityModel struct {
 type Types []Type
 
 type Type struct {
-	ID            block.Word
+	ID            domain.Word
 	Name          string
 	Kind          TypeKind
 	Attributes    Attributes
@@ -38,7 +38,7 @@ type Attributes []Attribute
 type Attribute struct {
 	Name        string
 	Identifying bool
-	Type        block.Word
+	Type        domain.Word
 }
 
 type Relationships []Relationship
@@ -49,7 +49,7 @@ type Relationship struct {
 }
 
 const (
-	AbsoluteID block.Word = iota
+	AbsoluteID domain.Word = iota
 	IntegerID
 	StringID
 )
@@ -118,7 +118,7 @@ func (as *Attributes) read(r *stream.Reader) error {
 	return nil
 }
 
-func (as Attributes) parseAttributeType(name string) (block.Word, error) {
+func (as Attributes) parseAttributeType(name string) (domain.Word, error) {
 	switch name {
 	case "integer":
 		return IntegerID, nil

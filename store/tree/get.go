@@ -1,13 +1,11 @@
 package tree
 
-import (
-	"github.com/catlev/pkg/store/block"
-)
+import "github.com/catlev/pkg/domain"
 
 type Range struct {
 	tree *Tree
 	node *node
-	key  []block.Word
+	key  []domain.Word
 	pos  int
 	err  error
 }
@@ -15,7 +13,7 @@ type Range struct {
 // Get queries the tree using the given key, yielding the associated value. If no value has been
 // associated with the given key, then ErrNotFound is returned as an error. Errors may also
 // originate from the block store.
-func (t *Tree) Get(key []block.Word) (v []block.Word, err error) {
+func (t *Tree) Get(key []domain.Word) (v []domain.Word, err error) {
 	wrapErr(&err, "Get", key)
 
 	if len(key) != t.key {
@@ -39,7 +37,7 @@ func (t *Tree) Get(key []block.Word) (v []block.Word, err error) {
 
 // GetRange queries the tree using the given key and returns an iterator over entries of the tree,
 // starting with the largest key that is less than or equal to the given key.
-func (t *Tree) GetRange(key []block.Word) *Range {
+func (t *Tree) GetRange(key []domain.Word) *Range {
 	n, err := t.findNode(key)
 	pos := 0
 	if n != nil {
@@ -73,7 +71,7 @@ func (r *Range) Next() bool {
 	return ok
 }
 
-func (r *Range) This() []block.Word {
+func (r *Range) This() []domain.Word {
 	return r.node.getRow(r.pos)
 }
 

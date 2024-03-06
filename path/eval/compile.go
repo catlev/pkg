@@ -3,9 +3,9 @@ package eval
 import (
 	"errors"
 
+	"github.com/catlev/pkg/domain"
 	"github.com/catlev/pkg/model"
 	"github.com/catlev/pkg/path"
-	"github.com/catlev/pkg/store/block"
 )
 
 type Compiler struct {
@@ -62,7 +62,7 @@ func (v *compileVisitor) String(x string) (Arrow, error) {
 func (v *compileVisitor) Integer(x int) (Arrow, error) {
 	return success(&intPath{
 		valueID: model.IntegerID,
-		value:   block.Word(x),
+		value:   domain.Word(x),
 	})
 }
 

@@ -1,6 +1,6 @@
 package eval
 
-import "github.com/catlev/pkg/store/block"
+import "github.com/catlev/pkg/domain"
 
 type Cursor interface {
 	Next() bool
@@ -81,7 +81,7 @@ func (c *valueCursor) Next() bool {
 func (c *valueCursor) This() Object {
 	return Object{
 		EntityID: c.arm.entityID,
-		Fields:   []block.Word{c.arm.where[0]},
+		Fields:   []domain.Word{c.arm.where[0]},
 	}
 }
 

@@ -3,8 +3,8 @@ package eval
 import (
 	"sort"
 
+	"github.com/catlev/pkg/domain"
 	"github.com/catlev/pkg/model"
-	"github.com/catlev/pkg/store/block"
 )
 
 type Arrow interface {
@@ -76,8 +76,8 @@ func (p *joinPath) Reverse() Arrow {
 }
 
 type attrPath struct {
-	entityID block.Word
-	valueID  block.Word
+	entityID domain.Word
+	valueID  domain.Word
 	column   int
 }
 
@@ -96,7 +96,7 @@ func (p *attrPath) Follow(xs Box) Box {
 			res.contents = append(res.contents, Query{
 				entityID: p.valueID,
 				mask:     1,
-				where:    []block.Word{c.This().Fields[p.column]},
+				where:    []domain.Word{c.This().Fields[p.column]},
 			})
 		}
 	}
@@ -113,8 +113,8 @@ func (p *attrPath) Reverse() Arrow {
 }
 
 type attrFilter struct {
-	entityID block.Word
-	valueID  block.Word
+	entityID domain.Word
+	valueID  domain.Word
 	column   int
 }
 
@@ -128,7 +128,7 @@ func (p *attrFilter) Follow(xs Box) Box {
 		model: xs.model,
 	}
 	for _, a := range xs.findAll(p.valueID) {
-		where := make([]block.Word, len(xs.model.Types[p.entityID].Attributes))
+		where := make([]domain.Word, len(xs.model.Types[p.entityID].Attributes))
 		where[p.column] = a.where[0]
 
 		res.contents = append(res.contents, Query{
@@ -150,8 +150,8 @@ func (p *attrFilter) Reverse() Arrow {
 }
 
 type intPath struct {
-	valueID block.Word
-	value   block.Word
+	valueID domain.Word
+	value   domain.Word
 }
 
 func (p *intPath) Follow(xs Box) Box {
@@ -167,7 +167,7 @@ func (p *intPath) Follow(xs Box) Box {
 		res.contents = append(res.contents, Query{
 			entityID: p.valueID,
 			mask:     1,
-			where:    []block.Word{p.value},
+			where:    []domain.Word{p.value},
 		})
 	}
 
@@ -179,8 +179,8 @@ func (p *intPath) Reverse() Arrow {
 }
 
 type intFilter struct {
-	valueID block.Word
-	value   block.Word
+	valueID domain.Word
+	value   domain.Word
 }
 
 func (p *intFilter) Follow(xs Box) Box {
@@ -209,7 +209,7 @@ func (p *intFilter) Reverse() Arrow {
 }
 
 type stringPath struct {
-	valueID block.Word
+	valueID domain.Word
 	value   string
 }
 
@@ -230,7 +230,7 @@ func (p *stringPath) Follow(xs Box) Box {
 		res.contents = append(res.contents, Query{
 			entityID: p.valueID,
 			mask:     1,
-			where:    []block.Word{value},
+			where:    []domain.Word{value},
 		})
 	}
 	return res
@@ -244,7 +244,7 @@ func (p *stringPath) Reverse() Arrow {
 }
 
 type stringFilter struct {
-	valueID block.Word
+	valueID domain.Word
 	value   string
 }
 
@@ -281,7 +281,7 @@ func (p *stringFilter) Reverse() Arrow {
 }
 
 type entityPath struct {
-	entityID block.Word
+	entityID domain.Word
 }
 
 func (p *entityPath) Follow(xs Box) Box {
@@ -296,7 +296,7 @@ func (p *entityPath) Follow(xs Box) Box {
 	if len(xs.findAll(model.AbsoluteID)) != 0 {
 		res.contents = append(res.contents, Query{
 			entityID: p.entityID,
-			where:    make([]block.Word, len(xs.model.Types[p.entityID].Attributes)),
+			where:    make([]domain.Word, len(xs.model.Types[p.entityID].Attributes)),
 		})
 	}
 	return res
@@ -309,7 +309,7 @@ func (p *entityPath) Reverse() Arrow {
 }
 
 type entityFilter struct {
-	entityID block.Word
+	entityID domain.Word
 }
 
 func (p *entityFilter) Follow(xs Box) Box {
